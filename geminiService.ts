@@ -3,9 +3,10 @@ import { SkinAnalysis } from "./types";
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
 // 1. MODEL LIST (Llama Scout prioritized)
+// Swapped order: Scout FIRST because you want to use it.
 const VISION_MODELS = [
-  "llama-3.2-90b-vision-preview",
   "meta-llama/llama-4-scout-17b-16e-instruct",   
+  "llama-3.2-90b-vision-preview",
   "llama-3.2-11b-vision-preview"       
 ];
 
