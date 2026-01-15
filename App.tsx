@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeSkinImage } from './geminiService';
-import { TimelineEntry, SkinAnalysis, DetailCategory } from './types';
+import { TimelineEntry, SkinAnalysis, DetailCategory, AnalysisPoint } from './types';
 import ProgressionCompare from './ProgressionCompare';
 
 /* ================= UI WIDGETS ================= */
@@ -70,6 +70,37 @@ const StepRow: React.FC<{ step: string; text: string }> = ({ step, text }) => (
   </div>
 );
 
+/* ================= UTILS (CRITICAL FIX FOR IOS) ================= */
+
+// Helper to downscale images to prevent iOS Memory Crash
+const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+      
+      // Calculate new dimensions
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // Compress to JPEG 0.7 quality to save memory
+      resolve(canvas.toDataURL("image/jpeg", 0.7));
+    };
+    img.onerror = () => resolve(base64Str); // Fallback to original
+  });
+};
+
+
 /* ================= MAIN APP ================= */
 
 type Screen = 'home' | 'preview' | 'analyzing' | 'result' | 'detail' | 'history' | 'compare';
@@ -94,8 +125,14 @@ export default function App() {
     if (saved) try { setEntries(JSON.parse(saved)); } catch (e) {}
   }, []);
 
+  // CRITICAL FIX: Safe LocalStorage Saving
   useEffect(() => {
-    localStorage.setItem('derm_history', JSON.stringify(entries));
+    try {
+      localStorage.setItem('derm_history', JSON.stringify(entries));
+    } catch (e) {
+      console.warn("Storage Quota Exceeded - History not saved to prevent crash");
+      // Optional: You could slice the array here to keep only the last 5 entries
+    }
   }, [entries]);
 
   useEffect(() => {
@@ -131,10 +168,13 @@ export default function App() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (re) => {
+      reader.onload = async (re) => {
         const result = re.target?.result;
         if (typeof result === 'string') {
-          setSelectedImage(result);
+          // CRITICAL FIX: Compress immediately before setting state
+          // This prevents the 10MB+ string from crashing React State on iOS
+          const compressed = await compressImageForUI(result);
+          setSelectedImage(compressed);
           setShowUploadSheet(false);
           setCurrentScreen('preview');
         }
@@ -150,6 +190,7 @@ export default function App() {
     setAnalysis(null); 
 
     try {
+      // The image is already compressed from handleUpload, so it's safe to send
       const result = await analyzeSkinImage(selectedImage);
       
       if (!result) throw new Error("No data received");
@@ -159,7 +200,7 @@ export default function App() {
       const newEntry: TimelineEntry = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
-        imageData: selectedImage,
+        imageData: selectedImage, // Storing the compressed version is safe
         label: result.diseaseName || (result.isHealthy ? 'Healthy Skin' : 'Analysis'),
         analysis: result
       };
@@ -174,6 +215,28 @@ export default function App() {
       alert("Analysis failed. Please try again.");
       console.error(err);
       navigateTo('home');
+    }
+  };
+
+  // Helper to extract the list based on category
+  const getDetailList = (): (AnalysisPoint | string)[] => {
+    if (!analysis) return [];
+    
+    switch (detailCategory) {
+      case 'Symptoms':
+        return analysis.symptoms && analysis.symptoms.length > 0 ? analysis.symptoms : [{ title: "No Data", details: "No specific symptoms listed." }];
+      case 'Causes':
+        return analysis.reasons && analysis.reasons.length > 0 ? analysis.reasons : [{ title: "No Data", details: "No specific reasons listed." }];
+      case 'Care & Precautions':
+        return [...(analysis.precautions || []), ...(analysis.prevention || [])];
+      case 'Healing & Tracking':
+        const items = [...(analysis.treatments || [])];
+        if (analysis.healingPeriod) {
+           items.unshift({ title: "Estimated Recovery", details: analysis.healingPeriod });
+        }
+        return items;
+      default:
+        return [];
     }
   };
 
@@ -279,7 +342,6 @@ export default function App() {
 
         {currentScreen === 'result' && (
           <div className="p-8 pb-40 fade-in-up">
-            {/* White Screen Fix: Handle Null Analysis */}
             {!analysis ? (
                <div className="text-center mt-20">
                  <p className="text-slate-400 font-bold mb-4">Error loading results.</p>
@@ -294,7 +356,6 @@ export default function App() {
                 <div className="px-2">
                   <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.25em] block mb-2">Analysis Result</span>
                   
-                  {/* CRITICAL FIX: Safe Check for Disease Name to prevent White Screen Crash */}
                   <h3 className="text-[26px] font-black text-slate-900 leading-tight mb-4">
                       {analysis.isHealthy && analysis.diseaseName?.includes("Healthy") 
                         ? "Healthy Skin" 
@@ -328,14 +389,19 @@ export default function App() {
               <h3 className="text-[18px] font-black text-slate-900 tracking-tight uppercase">{String(detailCategory)}</h3>
             </div>
             <div className="space-y-4">
-              {(detailCategory === 'Symptoms' ? (analysis.symptoms?.length ? analysis.symptoms : ["No specific symptoms listed"]) :
-                detailCategory === 'Causes' ? (analysis.reasons?.length ? analysis.reasons : ["No specific reasons listed"]) :
-                detailCategory === 'Care & Precautions' ? [...(analysis.precautions || []), ...(analysis.prevention || [])] :
-                [analysis.healingPeriod || 'Standard cycle', ...(analysis.treatments || []), ...(analysis.medicines || [])]
-              ).map((point, i) => (
+              {getDetailList().map((point, i) => (
                 <div key={i} className="p-6 glass-card rounded-[28px] border border-white flex gap-4 items-start shadow-sm hover:translate-x-1 transition-transform duration-300">
                   <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0 shadow-sm" />
-                  <p className="text-[14px] text-slate-700 font-bold leading-relaxed">{String(point)}</p>
+                  <div className="flex-1">
+                    {typeof point === 'string' ? (
+                       <p className="text-[14px] text-slate-700 font-bold leading-relaxed">{point}</p>
+                    ) : (
+                       <>
+                         <p className="text-[15px] text-slate-800 font-black leading-tight mb-2">{point.title}</p>
+                         <p className="text-[13px] text-slate-500 font-medium leading-relaxed">{point.details}</p>
+                       </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
