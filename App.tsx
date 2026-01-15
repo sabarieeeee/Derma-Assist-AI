@@ -9,14 +9,16 @@ const LiquidGlassButton: React.FC<{
   text: string; 
   onClick: () => void; 
   icon?: React.ReactNode; 
-  className?: string;
+  className?: string; 
   variant?: 'primary' | 'secondary';
-}> = ({ text, onClick, icon, className = "", variant = 'primary' }) => (
+  disabled?: boolean;
+}> = ({ text, onClick, icon, className = "", variant = 'primary', disabled = false }) => (
   <button 
     onClick={onClick}
+    disabled={disabled}
     className={`w-full h-14 rounded-[22px] flex items-center justify-center gap-3 liquid-glass-btn relative group overflow-hidden ${className} ${
       variant === 'primary' ? 'font-extrabold text-slate-800' : 'font-semibold text-slate-500'
-    }`}
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
   >
     <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
     {icon && <span className="opacity-80 group-hover:scale-110 transition-transform duration-300">{icon}</span>}
@@ -80,6 +82,9 @@ export default function App() {
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [detailCategory, setDetailCategory] = useState<DetailCategory>(null);
   const [helperIdx, setHelperIdx] = useState(0);
+  
+  // New State for Comparison Selection
+  const [compareSelection, setCompareSelection] = useState<string[]>([]);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +109,23 @@ export default function App() {
   const navigateTo = (s: Screen) => {
     setCurrentScreen(s);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Reset comparison selection when leaving the screen
+    if (s !== 'compare') setCompareSelection([]);
+  };
+
+  const deleteEntry = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if(window.confirm("Delete this scan from history?")) {
+      setEntries(prev => prev.filter(entry => entry.id !== id));
+    }
+  };
+
+  const toggleCompareSelection = (id: string) => {
+    setCompareSelection(prev => {
+      if (prev.includes(id)) return prev.filter(item => item !== id);
+      if (prev.length >= 2) return [prev[1], id]; // Keep only last 2
+      return [...prev, id];
+    });
   };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,10 +146,18 @@ export default function App() {
 
   const startAnalysis = async () => {
     if (!selectedImage) return;
+    
     navigateTo('analyzing');
+    setAnalysis(null); // Clear previous analysis to prevent old data showing
+
     try {
       const result = await analyzeSkinImage(selectedImage);
+      
+      // Safety check: Ensure result exists
+      if (!result) throw new Error("No data received");
+
       setAnalysis(result);
+
       const newEntry: TimelineEntry = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
@@ -135,11 +165,17 @@ export default function App() {
         label: result.diseaseName || (result.isHealthy ? 'Healthy Skin' : 'Analysis'),
         analysis: result
       };
+      
       setEntries(prev => [...prev, newEntry]);
-      // Artificial delay for smooth transition
-      setTimeout(() => navigateTo('result'), 4500);
+
+      // Delay only AFTER data is ready
+      setTimeout(() => {
+        navigateTo('result');
+      }, 2000); // Reduced time for better UX
+
     } catch (err) {
-      alert("Analysis failed. Use a clearer photo.");
+      alert("Analysis failed. Please try again.");
+      console.error(err);
       navigateTo('home');
     }
   };
@@ -162,7 +198,7 @@ export default function App() {
         {currentScreen === 'home' && (
           <div className="px-8 pt-8 pb-32 fade-in-up">
             <div className="mb-10 text-center">
-              <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Tracking.</h2>
+              <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Tracking v2.</h2>
               <p className="text-[14px] text-slate-500 font-medium leading-relaxed max-w-[90%] mx-auto mb-10">
                 Identify visual patterns and track your healing journey with AI verification benchmarks.
               </p>
@@ -211,7 +247,7 @@ export default function App() {
                   Sabarinath ©
                 </h4>
                 <p className="text-[7px] font-bold text-slate-300/50 mt-2">
-                  v1.0.0 • 2026
+                  v2.0.0 • 2026
                 </p>
               </div>
 
@@ -243,36 +279,48 @@ export default function App() {
                 Analyzing
               </p>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] opacity-60">
-                {['Scanning Textures', 'Verifying Patterns', 'Matching Records'][helperIdx]}
+                {['Scanning Texture', 'Checking Pores', 'Verifying Health'][helperIdx]}
               </p>
             </div>
           </div>
         )}
 
-        {currentScreen === 'result' && analysis && (
+        {currentScreen === 'result' && (
           <div className="p-8 pb-40 fade-in-up">
-            <div className="glass-card p-6 rounded-[44px] mb-8 relative overflow-hidden flex flex-col items-center text-center">
-              <div className="w-full aspect-[4/3] rounded-[32px] overflow-hidden border border-white shadow-sm mb-6 relative group">
-                <img src={selectedImage || ''} className="w-full h-full object-cover" />
+            {/* White Screen Fix: Handle Null Analysis */}
+            {!analysis ? (
+               <div className="text-center mt-20">
+                 <p className="text-slate-400 font-bold mb-4">Error loading results.</p>
+                 <LiquidGlassButton text="Go Home" onClick={() => navigateTo('home')} />
+               </div>
+            ) : (
+            <>
+              <div className="glass-card p-6 rounded-[44px] mb-8 relative overflow-hidden flex flex-col items-center text-center">
+                <div className="w-full aspect-[4/3] rounded-[32px] overflow-hidden border border-white shadow-sm mb-6 relative group">
+                  <img src={selectedImage || ''} className="w-full h-full object-cover" />
+                </div>
+                <div className="px-2">
+                  <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.25em] block mb-2">Analysis Result</span>
+                  <h3 className="text-[26px] font-black text-slate-900 leading-tight mb-4">
+                      {analysis.isHealthy && !analysis.diseaseName.includes("Healthy") 
+                        ? "Healthy Skin" 
+                        : (analysis.diseaseName || 'Unknown Condition')}
+                  </h3>
+                  <div className="w-12 h-[2.5px] bg-slate-200 mx-auto mb-6" />
+                  <p className="text-[14px] text-slate-500 font-medium leading-relaxed">
+                    {analysis.description ? String(analysis.description) : "Analysis shows standard texture without critical visual abnormalities."}
+                  </p>
+                </div>
               </div>
-              <div className="px-2">
-                <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.25em] block mb-2">Analysis Result</span>
-                <h3 className="text-[26px] font-black text-slate-900 leading-tight mb-4">
-                    {analysis.isHealthy ? 'Healthy Skin' : (String(analysis.diseaseName) || 'Unknown Condition')}
-                </h3>
-                <div className="w-12 h-[2.5px] bg-slate-200 mx-auto mb-6" />
-                <p className="text-[14px] text-slate-500 font-medium leading-relaxed">
-                  {analysis.description ? String(analysis.description) : "Analysis shows standard texture without critical visual abnormalities."}
-                </p>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              <LiquidGlassButton text="View Symptoms" onClick={() => { setDetailCategory('Symptoms'); navigateTo('detail'); }} />
-              <LiquidGlassButton text="Triggers & Reasons" onClick={() => { setDetailCategory('Causes'); navigateTo('detail'); }} />
-              <LiquidGlassButton text="Precaution & Care" onClick={() => { setDetailCategory('Care & Precautions'); navigateTo('detail'); }} />
-              <LiquidGlassButton text="Recovery Tracking" onClick={() => { setDetailCategory('Healing & Tracking'); navigateTo('detail'); }} />
-            </div>
+              <div className="grid grid-cols-1 gap-4">
+                <LiquidGlassButton text="View Symptoms" onClick={() => { setDetailCategory('Symptoms'); navigateTo('detail'); }} />
+                <LiquidGlassButton text="Triggers & Reasons" onClick={() => { setDetailCategory('Causes'); navigateTo('detail'); }} />
+                <LiquidGlassButton text="Precaution & Care" onClick={() => { setDetailCategory('Care & Precautions'); navigateTo('detail'); }} />
+                <LiquidGlassButton text="Recovery Tracking" onClick={() => { setDetailCategory('Healing & Tracking'); navigateTo('detail'); }} />
+              </div>
+            </>
+            )}
           </div>
         )}
 
@@ -285,10 +333,10 @@ export default function App() {
               <h3 className="text-[18px] font-black text-slate-900 tracking-tight uppercase">{String(detailCategory)}</h3>
             </div>
             <div className="space-y-4">
-              {(detailCategory === 'Symptoms' ? analysis.symptoms :
-                detailCategory === 'Causes' ? analysis.reasons :
-                detailCategory === 'Care & Precautions' ? [...analysis.precautions, ...analysis.prevention] :
-                [analysis.healingPeriod || 'Standard cycle', ...analysis.treatments, ...analysis.medicines]
+              {(detailCategory === 'Symptoms' ? (analysis.symptoms?.length ? analysis.symptoms : ["No specific symptoms listed"]) :
+                detailCategory === 'Causes' ? (analysis.reasons?.length ? analysis.reasons : ["No specific reasons listed"]) :
+                detailCategory === 'Care & Precautions' ? [...(analysis.precautions || []), ...(analysis.prevention || [])] :
+                [analysis.healingPeriod || 'Standard cycle', ...(analysis.treatments || []), ...(analysis.medicines || [])]
               ).map((point, i) => (
                 <div key={i} className="p-6 glass-card rounded-[28px] border border-white flex gap-4 items-start shadow-sm hover:translate-x-1 transition-transform duration-300">
                   <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0 shadow-sm" />
@@ -309,14 +357,21 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 {entries.slice().reverse().map(e => (
-                  <div key={e.id} onClick={() => { if (e.analysis) { setAnalysis(e.analysis); setSelectedImage(e.imageData); navigateTo('result'); } }} className="bg-white/40 backdrop-blur-lg p-4 rounded-[30px] border border-white shadow-sm flex gap-5 items-center active:scale-95 transition-all cursor-pointer group">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm">
+                  <div key={e.id} onClick={() => { if (e.analysis) { setAnalysis(e.analysis); setSelectedImage(e.imageData); navigateTo('result'); } }} className="bg-white/40 backdrop-blur-lg p-4 rounded-[30px] border border-white shadow-sm flex gap-5 items-center active:scale-95 transition-all cursor-pointer group relative">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm shrink-0">
                       <img src={e.imageData} className="w-full h-full object-cover" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-black text-slate-900 text-[16px] leading-tight mb-1">{String(e.label)}</h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(e.timestamp).toLocaleDateString()}</p>
                     </div>
+                    {/* Delete Button */}
+                    <button 
+                      onClick={(evt) => deleteEntry(e.id, evt)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -327,7 +382,53 @@ export default function App() {
         {currentScreen === 'compare' && (
           <div className="p-8 pb-32 fade-in-up">
             <h3 className="text-[12px] font-black text-slate-400 uppercase tracking-widest mb-8 text-center">Progression Mapping</h3>
-            <ProgressionCompare entries={entries} />
+            
+            {/* COMPARISON SELECTION UI */}
+            <div className="mb-6">
+              <p className="text-[11px] font-bold text-slate-400 mb-4 text-center">
+                 {compareSelection.length === 2 ? "Ready to Compare" : `Select 2 Scans (${compareSelection.length}/2)`}
+              </p>
+              
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                 {entries.slice().reverse().map(e => {
+                   const isSelected = compareSelection.includes(e.id);
+                   return (
+                     <div 
+                       key={e.id} 
+                       onClick={() => toggleCompareSelection(e.id)}
+                       className={`p-3 rounded-[24px] border flex items-center gap-4 transition-all cursor-pointer ${
+                         isSelected ? 'bg-blue-50 border-blue-400 shadow-md' : 'bg-white/40 border-white hover:bg-white/60'
+                       }`}
+                     >
+                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300'}`}>
+                         {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                       </div>
+                       <img src={e.imageData} className="w-10 h-10 rounded-xl object-cover" />
+                       <div className="flex-1">
+                          <h4 className="font-bold text-slate-800 text-[13px]">{e.label}</h4>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase">{new Date(e.timestamp).toLocaleDateString()}</p>
+                       </div>
+                     </div>
+                   );
+                 })}
+              </div>
+            </div>
+
+            {compareSelection.length === 2 && (
+               <div className="mt-4">
+                 <div className="p-4 bg-white/50 rounded-[32px] border border-white shadow-sm mb-6">
+                    <h4 className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Comparison View</h4>
+                    {/* Render the Progression Component with Selected Entries */}
+                    <ProgressionCompare entries={entries.filter(e => compareSelection.includes(e.id))} />
+                 </div>
+               </div>
+            )}
+            
+            {entries.length < 2 && (
+               <div className="text-center p-6 bg-amber-50 rounded-[32px] border border-amber-100">
+                  <p className="text-amber-800/60 text-[11px] font-bold">You need at least 2 scans to use comparison.</p>
+               </div>
+            )}
           </div>
         )}
       </main>
