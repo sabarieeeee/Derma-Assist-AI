@@ -2,7 +2,7 @@ import { SkinAnalysis } from "./types";
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-// 1. UPDATED MODEL LIST (Prioritize Llama 4 Scout)
+// 1. MODEL LIST
 const VISION_MODELS = [
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "llama-3.2-90b-vision-preview",   
@@ -115,14 +115,12 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
     const content = data.choices[0].message.content;
     const result = JSON.parse(content);
 
-    // FIX: Ensure arrays are never empty to prevent UI blank spots
     const defaultAdvice = ["Maintain daily hygiene", "Use sunscreen (SPF 50)", "Drink 3L water daily"];
     if (!result.symptoms?.length) result.symptoms = ["No critical symptoms detected.", "Standard skin texture observed."];
     if (!result.reasons?.length) result.reasons = ["Genetics", "Environmental factors", "Lifestyle choices"];
     if (!result.precautions?.length) result.precautions = defaultAdvice;
     if (!result.prevention?.length) result.prevention = defaultAdvice;
 
-    // Handle Non-Skin logic
     if (result.isSkin === false) {
        return {
          ...result,
@@ -142,4 +140,10 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
     alert(`Analysis Failed: ${error.message}`);
     return { isSkin: false, isHealthy: false, diseaseName: "Analysis Error", description: error.message } as SkinAnalysis;
   }
+};
+
+// === ADDED BACK: THIS WAS MISSING ===
+export const compareProgression = async (img1: string, img2: string): Promise<string> => {
+  // Placeholder logic for visual comparison module
+  return "Progression analysis ready. Please visually compare the texture and redness changes between the two scans above.";
 };
