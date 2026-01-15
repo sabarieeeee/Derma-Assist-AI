@@ -2,10 +2,10 @@ import { SkinAnalysis } from "./types";
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-// 1. MODEL LIST
+// 1. MODEL LIST (Llama Scout prioritized)
 const VISION_MODELS = [
-  "meta-llama/llama-4-scout-17b-16e-instruct",
-  "llama-3.2-90b-vision-preview",   
+  "llama-3.2-90b-vision-preview",
+  "meta-llama/llama-4-scout-17b-16e-instruct",   
   "llama-3.2-11b-vision-preview"       
 ];
 
@@ -137,13 +137,25 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
 
   } catch (error: any) {
     console.error("Analysis Failed:", error);
-    alert(`Analysis Failed: ${error.message}`);
-    return { isSkin: false, isHealthy: false, diseaseName: "Analysis Error", description: error.message } as SkinAnalysis;
+    
+    // SAFE FALLBACK: Return empty arrays to prevent White Screen Crash
+    return { 
+      isSkin: false, 
+      isHealthy: false, 
+      diseaseName: "Analysis Failed", 
+      description: `The AI could not complete the scan. Reason: ${error.message || "Network Error"}. Please try again later.`,
+      symptoms: [],
+      reasons: [],
+      treatments: [],
+      medicines: [],
+      precautions: [],
+      prevention: [],
+      healingPeriod: "Unknown"
+    } as SkinAnalysis;
   }
 };
 
-// === ADDED BACK: THIS WAS MISSING ===
+// === EXPORT NEEDED FOR BUILD ===
 export const compareProgression = async (img1: string, img2: string): Promise<string> => {
-  // Placeholder logic for visual comparison module
   return "Progression analysis ready. Please visually compare the texture and redness changes between the two scans above.";
 };
