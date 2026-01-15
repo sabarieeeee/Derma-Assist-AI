@@ -96,7 +96,7 @@ export default function App() {
   useEffect(() => {
     let helperInterval: any;
     if (currentScreen === 'analyzing') {
-      helperInterval = setInterval(() => setHelperIdx(i => (i + 1) % 3), 2500);
+      helperInterval = setInterval(() => setHelperIdx(i => (i + 1) % 3), 4500);
     }
     return () => { if (helperInterval) clearInterval(helperInterval); };
   }, [currentScreen]);
@@ -137,7 +137,7 @@ export default function App() {
       };
       setEntries(prev => [...prev, newEntry]);
       // Artificial delay for smooth transition
-      setTimeout(() => navigateTo('result'), 2500);
+      setTimeout(() => navigateTo('result'), 4500);
     } catch (err) {
       alert("Analysis failed. Use a clearer photo.");
       navigateTo('home');
@@ -210,7 +210,7 @@ export default function App() {
                 <h4 className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.15em]">
                   Sabarinath ©
                 </h4>
-                <p className="text-[6px] font-bold text-slate-300/50 mt-2">
+                <p className="text-[7px] font-bold text-slate-300/50 mt-2">
                   v1.0.0 • 2026
                 </p>
               </div>
