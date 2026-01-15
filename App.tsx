@@ -193,7 +193,7 @@ export default function App() {
         {currentScreen === 'home' && (
           <div className="px-8 pt-8 pb-32 fade-in-up">
             <div className="mb-10 text-center">
-              <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Tracking v2.</h2>
+              <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Condition Analyzer.</h2>
               <p className="text-[14px] text-slate-500 font-medium leading-relaxed max-w-[90%] mx-auto mb-10">
                 Identify visual patterns and track your healing journey with AI verification benchmarks.
               </p>
@@ -239,8 +239,8 @@ export default function App() {
                 <h4 className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.15em]">
                   Sabarinath ©
                 </h4>
-                <p className="text-[7px] font-bold text-slate-300/50 mt-2">
-                  v2.0.0 • 2026
+                <p className="text-[8px] font-bold text-slate-300/50 mt-2">
+                  v2.2.0 • 2026
                 </p>
               </div>
 
