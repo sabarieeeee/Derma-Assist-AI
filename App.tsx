@@ -109,7 +109,6 @@ export default function App() {
   const navigateTo = (s: Screen) => {
     setCurrentScreen(s);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Reset comparison selection when leaving the screen
     if (s !== 'compare') setCompareSelection([]);
   };
 
@@ -123,7 +122,7 @@ export default function App() {
   const toggleCompareSelection = (id: string) => {
     setCompareSelection(prev => {
       if (prev.includes(id)) return prev.filter(item => item !== id);
-      if (prev.length >= 2) return [prev[1], id]; // Keep only last 2
+      if (prev.length >= 2) return [prev[1], id]; 
       return [...prev, id];
     });
   };
@@ -148,12 +147,11 @@ export default function App() {
     if (!selectedImage) return;
     
     navigateTo('analyzing');
-    setAnalysis(null); // Clear previous analysis to prevent old data showing
+    setAnalysis(null); 
 
     try {
       const result = await analyzeSkinImage(selectedImage);
       
-      // Safety check: Ensure result exists
       if (!result) throw new Error("No data received");
 
       setAnalysis(result);
@@ -168,10 +166,9 @@ export default function App() {
       
       setEntries(prev => [...prev, newEntry]);
 
-      // Delay only AFTER data is ready
       setTimeout(() => {
         navigateTo('result');
-      }, 2000); // Reduced time for better UX
+      }, 2000);
 
     } catch (err) {
       alert("Analysis failed. Please try again.");
@@ -183,7 +180,6 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen max-w-md mx-auto relative bg-[#F8FAFC] overflow-x-hidden antialiased">
        
-      {/* HEADER: Title Left, Nav Right */}
       <header className="px-6 py-6 flex items-center justify-between sticky top-0 z-40 bg-[#F8FAFC]/40 backdrop-blur-2xl border-b border-white/20">
         <h1 className="text-[13px] font-black tracking-[0.2em] text-slate-900 uppercase">Derma Assist AI</h1>
         <div className="flex gap-2.5 nav-glass p-1.5 rounded-[22px] shadow-sm">
@@ -193,12 +189,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
       <main className="flex-1 relative">
         {currentScreen === 'home' && (
           <div className="px-8 pt-8 pb-32 fade-in-up">
             <div className="mb-10 text-center">
-              <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Condition Analyzer.</h2>
+              <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Tracking v2.</h2>
               <p className="text-[14px] text-slate-500 font-medium leading-relaxed max-w-[90%] mx-auto mb-10">
                 Identify visual patterns and track your healing journey with AI verification benchmarks.
               </p>
@@ -227,7 +222,6 @@ export default function App() {
                 <StepRow step="3" text="Get comprehensive care report" />
               </SectionCard>
 
-              {/* IMPORTANT NOTE ON HOME PAGE */}
               <div className="mt-8 p-6 rounded-[32px] bg-amber-50/40 border border-amber-100 shadow-sm text-left">
                 <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
@@ -238,7 +232,6 @@ export default function App() {
                 </p>
               </div>
 
-              {/* === CREDITS FOOTER (Fixed Placement) === */}
               <div className="mt-12 mb-4 text-center">
                 <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.25em] mb-1">
                   Designed & Developed by
@@ -246,7 +239,7 @@ export default function App() {
                 <h4 className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.15em]">
                   Sabarinath ©
                 </h4>
-                <p className="text-[9px] font-bold text-slate-300/50 mt-2">
+                <p className="text-[7px] font-bold text-slate-300/50 mt-2">
                   v2.0.0 • 2026
                 </p>
               </div>
@@ -268,7 +261,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MINIMAL BUFFERING SCREEN */}
         {currentScreen === 'analyzing' && (
           <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#F8FAFC]">
             <div className="flex items-center justify-center mb-5">
@@ -301,11 +293,14 @@ export default function App() {
                 </div>
                 <div className="px-2">
                   <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.25em] block mb-2">Analysis Result</span>
+                  
+                  {/* CRITICAL FIX: Safe Check for Disease Name to prevent White Screen Crash */}
                   <h3 className="text-[26px] font-black text-slate-900 leading-tight mb-4">
-                      {analysis.isHealthy && !analysis.diseaseName.includes("Healthy") 
+                      {analysis.isHealthy && analysis.diseaseName?.includes("Healthy") 
                         ? "Healthy Skin" 
                         : (analysis.diseaseName || 'Unknown Condition')}
                   </h3>
+
                   <div className="w-12 h-[2.5px] bg-slate-200 mx-auto mb-6" />
                   <p className="text-[14px] text-slate-500 font-medium leading-relaxed">
                     {analysis.description ? String(analysis.description) : "Analysis shows standard texture without critical visual abnormalities."}
@@ -365,7 +360,6 @@ export default function App() {
                       <h4 className="font-black text-slate-900 text-[16px] leading-tight mb-1">{String(e.label)}</h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(e.timestamp).toLocaleDateString()}</p>
                     </div>
-                    {/* Delete Button */}
                     <button 
                       onClick={(evt) => deleteEntry(e.id, evt)}
                       className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
@@ -383,7 +377,6 @@ export default function App() {
           <div className="p-8 pb-32 fade-in-up">
             <h3 className="text-[12px] font-black text-slate-400 uppercase tracking-widest mb-8 text-center">Progression Mapping</h3>
             
-            {/* COMPARISON SELECTION UI */}
             <div className="mb-6">
               <p className="text-[11px] font-bold text-slate-400 mb-4 text-center">
                  {compareSelection.length === 2 ? "Ready to Compare" : `Select 2 Scans (${compareSelection.length}/2)`}
@@ -418,7 +411,6 @@ export default function App() {
                <div className="mt-4">
                  <div className="p-4 bg-white/50 rounded-[32px] border border-white shadow-sm mb-6">
                     <h4 className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Comparison View</h4>
-                    {/* Render the Progression Component with Selected Entries */}
                     <ProgressionCompare entries={entries.filter(e => compareSelection.includes(e.id))} />
                  </div>
                </div>
@@ -433,7 +425,6 @@ export default function App() {
         )}
       </main>
 
-      {/* FOOTER ACTION BUTTON */}
       {(currentScreen === 'home' || currentScreen === 'history' || currentScreen === 'compare' || currentScreen === 'result') && (
         <div className="fixed bottom-0 left-0 right-0 px-8 pb-10 z-[60] pointer-events-none">
           <div className="max-w-[320px] mx-auto pointer-events-auto">
@@ -450,7 +441,6 @@ export default function App() {
         </div>
       )}
 
-      {/* UPLOAD POPUP */}
       {showUploadSheet && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-6 bg-slate-900/10 backdrop-blur-[8px]" onClick={() => setShowUploadSheet(false)}>
           <div className="w-full max-w-[320px] bg-white rounded-[56px] p-10 shadow-2xl relative animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
