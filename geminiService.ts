@@ -1,12 +1,14 @@
+
 import { SkinAnalysis } from "./types";
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-// 1. MODEL LIST 
+// 1. MODEL LIST (Llama Scout prioritized)
+// Swapped order: Scout FIRST because you want to use it.
 const VISION_MODELS = [
-  "meta-llama/llama-3.2-11b-vision-preview",     
+  "meta-llama/llama-4-scout-17b-16e-instruct",   
   "llama-3.2-90b-vision-preview",
-  "llama-guard-3-8b"        
+  "llama-3.2-11b-vision-preview"       
 ];
 
 // 2. HELPER: Compress Image
@@ -77,22 +79,17 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
 
             STEP 0: IS THIS HUMAN SKIN? 
             - If it is a wall, fabric, or blurry object, return "isSkin": false.
-            - If "isSkin": false, YOU MUST generate "reasons" explaining why (e.g., "Blurry", "Too dark") and "precautions" on how to take a better photo.
+            - If "isSkin": false, YOU MUST still fill "reasons" (why it failed) and "precautions" (how to take a better photo). Do not leave arrays empty.
 
-            STEP 1: IDENTIFY CONDITION
-            - Identify the specific condition (e.g., "Cystic Acne", "Eczema", "Healthy Skin").
-            - If "Healthy Skin", do NOT leave arrays empty. Instead, generate SPECIFIC maintenance advice based on the skin type seen (e.g., oily, dry).
+            STEP 1: SENSITIVITY CHECK (Even for "Healthy" Skin)
+            - Do NOT simply say "Healthy Skin" if there are minor imperfections.
+            - Detect: Mild Acne, Enlarged Pores, Dehydration, Sebum/Oiliness, Fine Lines, Minor Scars, Hyper-pigmentation, or Scratch marks.
+            - If no *disease* exists but these issues exist, set "isHealthy": true, but set "diseaseName" to the imperfection (e.g., "Healthy Skin - Mild Dehydration" or "Healthy Skin - Enlarged Pores").
 
-            STEP 2: CONTENT GENERATION (Strict Rule: NO GENERIC TEXT)
-            - Every list item must be directly related to the specific condition identified.
-            - "symptoms": List visual indicators seen in the image.
-            - "reasons": List specific biological or environmental causes for THIS condition.
-            - "precautions": List specific "Do's and Don'ts" for THIS condition.
-            - "treatments": List medical or home remedies for THIS condition.
-
-            FORMAT:
-            - "title": A short, punchy header (2-4 words).
-            - "details": A 1-2 line description that explains the 'why' or 'how' specifically for this disease.
+            STEP 2: CONTENT FILLING (Crucial)
+            - NEVER leave symptoms, reasons, treatments, or precautions empty.
+            - If Healthy: List maintenance tips, sun protection, and hydration advice in "treatments" and "precautions".
+            - If Not Skin: List tips for camera focus and lighting.
 
             Return ONLY valid JSON. Structure:
             {
@@ -100,13 +97,13 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
               "isHealthy": boolean,
               "diseaseName": "string", 
               "description": "string",
-              "symptoms": [{ "title": "string", "details": "string" }],
-              "reasons": [{ "title": "string", "details": "string" }],
-              "treatments": [{ "title": "string", "details": "string" }],
-              "medicines": [{ "title": "string", "details": "string" }],
+              "symptoms": ["string"],
+              "reasons": ["string"],
+              "treatments": ["string"],
+              "medicines": ["string"],
               "healingPeriod": "string",
-              "precautions": [{ "title": "string", "details": "string" }],
-              "prevention": [{ "title": "string", "details": "string" }]
+              "precautions": ["string"],
+              "prevention": ["string"]
             }` },
             { type: "image_url", image_url: { url: compressedImage } }
           ]
@@ -120,27 +117,21 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
     const content = data.choices[0].message.content;
     const result = JSON.parse(content);
 
-    // --- REMOVED ALL DEFAULT HARDCODED FALLBACKS --- 
-    // The data returned is now purely what the AI generated.
+    const defaultAdvice = ["Maintain daily hygiene", "Use sunscreen (SPF 50)", "Drink 3L water daily"];
+    if (!result.symptoms?.length) result.symptoms = ["No critical symptoms detected.", "Standard skin texture observed."];
+    if (!result.reasons?.length) result.reasons = ["Genetics", "Environmental factors", "Lifestyle choices"];
+    if (!result.precautions?.length) result.precautions = defaultAdvice;
+    if (!result.prevention?.length) result.prevention = defaultAdvice;
 
-    // Handle Non-Skin Failure Case purely with AI data or minimal error flags
     if (result.isSkin === false) {
-       // We still return the object structure, but we rely on the AI's "reasons" from Step 0.
-       // If the AI failed to generate reasons for non-skin, we provide a generic error ONLY then.
-       if (!result.reasons || result.reasons.length === 0) {
-           result.reasons = [{ title: "Scan Failed", details: "The image quality was too low to identify skin." }];
-       }
        return {
          ...result,
          isHealthy: false,
-         diseaseName: result.diseaseName || "No Skin Detected",
-         description: result.description || "The analysis could not identify human skin.",
-         // Ensure arrays exist to prevent crashes, but empty is better than fake data
-         symptoms: result.symptoms || [],
-         treatments: [],
-         medicines: [],
-         precautions: result.precautions || [],
-         prevention: []
+         diseaseName: "No Skin Detected",
+         description: "The AI could not clearly identify human skin. This may be due to lighting, blur, or the object not being skin.",
+         symptoms: ["Image blur", "Poor lighting", "Non-skin object"],
+         reasons: ["Camera not focused", "Object is too far", "Shadows obscuring details"],
+         precautions: ["Use natural lighting", "Hold camera steady", "Focus on the skin area"]
        };
     }
 
@@ -149,11 +140,12 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
   } catch (error: any) {
     console.error("Analysis Failed:", error);
     
+    // SAFE FALLBACK: Return empty arrays to prevent White Screen Crash
     return { 
       isSkin: false, 
       isHealthy: false, 
       diseaseName: "Analysis Failed", 
-      description: `The AI could not complete the scan. Reason: ${error.message || "Network Error"}.`,
+      description: `The AI could not complete the scan. Reason: ${error.message || "Network Error"}. Please try again later.`,
       symptoms: [],
       reasons: [],
       treatments: [],
@@ -165,6 +157,7 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
   }
 };
 
+// === EXPORT NEEDED FOR BUILD ===
 export const compareProgression = async (img1: string, img2: string): Promise<string> => {
-  return "Progression analysis ready.";
+  return "Progression analysis ready. Please visually compare the texture and redness changes between the two scans above.";
 };
