@@ -35,7 +35,7 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
 
   if (entries.length < 2) return null;
 
-  // Helper to choose colors based on verdict (Updated for Glassy Look)
+  // UPDATED: Handle MISMATCH style
   const getVerdictStyles = (v: string) => {
     if (v === 'IMPROVED') return {
       container: 'border-green-200 bg-green-50/50',
@@ -47,6 +47,11 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
       text: 'text-red-500',
       icon: 'text-red-500'
     };
+    if (v === 'MISMATCH') return {
+      container: 'border-amber-200 bg-amber-50/50',
+      text: 'text-amber-600',
+      icon: 'text-amber-500'
+    };
     return {
       container: 'border-slate-200 bg-slate-50/50',
       text: 'text-slate-500',
@@ -57,6 +62,7 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
   const getIcon = (v: string) => {
     if (v === 'IMPROVED') return <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>;
     if (v === 'WORSENED') return <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>;
+    if (v === 'MISMATCH') return <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
     return <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 12H4" /></svg>;
   }
 
@@ -64,7 +70,7 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
 
   return (
     <div className="space-y-8">
-      {/* Image Selection Grid */}
+      {/* Grid and Buttons same as before... */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-center">Baseline</label>
@@ -95,7 +101,6 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
         </div>
       </div>
 
-      {/* Compare Button */}
       <button 
         onClick={handleCompare}
         disabled={loading || idx1 === idx2}
@@ -113,11 +118,9 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
         )}
       </button>
 
-      {/* LIQUID GLASS REPORT CARD */}
       {report && (
         <div className="glass-card p-8 rounded-[40px] shadow-2xl border border-white/60 relative overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-700">
           
-          {/* Ambient Glow Effect */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 blur-[80px] rounded-full pointer-events-none -mr-32 -mt-32" />
 
           {/* Verdict Header */}
@@ -128,19 +131,21 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
             <div>
               <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">AI Verdict</h3>
               <p className={`text-[22px] font-black uppercase tracking-tight leading-none ${styles.text}`}>
-                {report.verdict}
+                {report.verdict === 'MISMATCH' ? 'Not Comparable' : report.verdict}
               </p>
             </div>
           </div>
 
           {/* Observable Changes List */}
           <div className="mb-8 relative z-10">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 pl-1">Observable Changes</h4>
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 pl-1">
+               {report.verdict === 'MISMATCH' ? 'Analysis Notes' : 'Observable Changes'}
+            </h4>
             <div className="space-y-3">
               {report.changes.map((change, i) => (
                 <div key={i} className="flex gap-4 items-start group">
-                  <div className="w-6 h-6 rounded-full bg-white/60 border border-white shadow-sm flex items-center justify-center mt-0.5 shrink-0 group-hover:scale-110 transition-transform">
-                    <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                  <div className={`w-6 h-6 rounded-full bg-white/60 border border-white shadow-sm flex items-center justify-center mt-0.5 shrink-0 ${report.verdict === 'MISMATCH' ? 'text-amber-500' : 'text-blue-500'}`}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                   </div>
                   <p className="text-[14px] text-slate-700 font-bold leading-relaxed">{change}</p>
                 </div>
@@ -148,11 +153,11 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
             </div>
           </div>
 
-          {/* AI Recommendation Box - Glassy & Floating */}
-          <div className="relative z-10 bg-gradient-to-br from-white/60 to-white/30 backdrop-blur-md rounded-[28px] p-6 border border-white/60 shadow-lg">
+          {/* Recommendation Box */}
+          <div className={`relative z-10 backdrop-blur-md rounded-[28px] p-6 border border-white/60 shadow-lg ${report.verdict === 'MISMATCH' ? 'bg-amber-50/50' : 'bg-gradient-to-br from-white/60 to-white/30'}`}>
              <div className="flex items-center gap-2 mb-3">
-               <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"/></svg>
-               <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Recommendation</h4>
+               <svg className={`w-4 h-4 ${report.verdict === 'MISMATCH' ? 'text-amber-500' : 'text-blue-500'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"/></svg>
+               <h4 className={`text-[10px] font-black uppercase tracking-widest ${report.verdict === 'MISMATCH' ? 'text-amber-600' : 'text-blue-600'}`}>Recommendation</h4>
              </div>
              <p className="text-[13px] text-slate-600 font-bold leading-relaxed">
                {report.recommendation}
