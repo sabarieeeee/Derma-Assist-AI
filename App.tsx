@@ -303,7 +303,7 @@ export default function App() {
                   Sabarinath ©
                 </h4>
                 <p className="text-[8px] font-bold text-slate-300/50 mt-2">
-                  v2.3.0 • 2026
+                  v3.1.0 • 2026
                 </p>
               </div>
 
