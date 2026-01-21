@@ -157,7 +157,60 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
   }
 };
 
-// === EXPORT NEEDED FOR BUILD ===
-export const compareProgression = async (img1: string, img2: string): Promise<string> => {
-  return "Progression analysis ready. Please visually compare the texture and redness changes between the two scans above.";
+export const compareProgression = async (img1: string, img2: string): Promise<ComparisonResult> => {
+  if (!GROQ_API_KEY) throw new Error("API Key Missing");
+
+  // Compress both images to ensure they fit in the payload
+  const cImg1 = await compressImage(img1, 600, 0.6);
+  const cImg2 = await compressImage(img2, 600, 0.6);
+
+  try {
+    const payload = {
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `You are a professional dermatologist. Compare these two images of the same patient's skin condition taken at different times.
+            
+            IMAGE 1 is the OLDER (Baseline) photo.
+            IMAGE 2 is the NEWER (Current) photo.
+
+            Analyze the evolution of the condition.
+            1. VERDICT: Has it "IMPROVED", "WORSENED", or remained "STABLE"?
+            2. CHANGES: List 3-4 specific observable visual changes (e.g., "Redness reduced", "Lesion size increased", "New pustules formed").
+            3. RECOMMENDATION: One sentence of advice based on the change.
+            4. DIFFERENT CONDITIONS: IF THE ATTACHED IMAGES IS OF DIFFERENT DISEASE OR CONDITION, STATE THAT ALSO.
+
+            Return ONLY raw JSON. No markdown. Structure:
+            {
+              "verdict": "IMPROVED" | "WORSENED" | "STABLE",
+              "changes": ["string", "string", "string"],
+              "recommendation": "string",
+              "different conditions": "string"
+            }` 
+            },
+            { type: "image_url", image_url: { url: cImg1 } },
+            { type: "image_url", image_url: { url: cImg2 } }
+          ]
+        }
+      ],
+      temperature: 0.1
+    };
+
+    const data = await tryGroqAnalysis(payload);
+    const content = data.choices[0].message.content;
+    
+    // Clean JSON output (remove ```json if present)
+    const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    return JSON.parse(cleanJson);
+
+  } catch (error) {
+    console.error("Comparison Failed", error);
+    return {
+      verdict: "UNCLEAR",
+      changes: ["Could not analyze progression due to image quality or server error."],
+      recommendation: "Please try again with clearer photos."
+    };
+  }
 };
