@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TimelineEntry, ComparisonResult } from './types';
-import { compareProgression } from './geminiServices'; 
+import { compareProgression } from './geminiService'; 
 
 interface ProgressionCompareProps {
   entries: TimelineEntry[];
