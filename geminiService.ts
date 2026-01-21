@@ -160,7 +160,6 @@ export const analyzeSkinImage = async (base64Image: string): Promise<SkinAnalysi
 export const compareProgression = async (img1: string, img2: string): Promise<ComparisonResult> => {
   if (!GROQ_API_KEY) throw new Error("API Key Missing");
 
-  // Compress both images to ensure they fit in the payload
   const cImg1 = await compressImage(img1, 600, 0.6);
   const cImg2 = await compressImage(img2, 600, 0.6);
 
@@ -170,23 +169,27 @@ export const compareProgression = async (img1: string, img2: string): Promise<Co
         {
           role: "user",
           content: [
-            { type: "text", text: `You are a professional dermatologist. Compare these two images of the same patient's skin condition taken at different times.
-            
-            IMAGE 1 is the OLDER (Baseline) photo.
-            IMAGE 2 is the NEWER (Current) photo.
+            { type: "text", text: `You are a professional dermatologist. Compare these two images.
 
-            Analyze the evolution of the condition.
-            1. VERDICT: Has it "IMPROVED", "WORSENED", or remained "STABLE"?
-            2. CHANGES: List 3-4 specific observable visual changes (e.g., "Redness reduced", "Lesion size increased", "New pustules formed").
-            3. RECOMMENDATION: One sentence of advice based on the change.
-            4. DIFFERENT CONDITIONS: IF THE ATTACHED IMAGES IS OF DIFFERENT DISEASE OR CONDITION, STATE THAT ALSO.
+            IMAGE 1: Baseline (Older)
+            IMAGE 2: Current (Newer)
 
-            Return ONLY raw JSON. No markdown. Structure:
+            STEP 1: CONSISTENCY CHECK (Critical)
+            - Do these images look like the same condition/body part?
+            - If Image 1 is Acne and Image 2 is Psoriasis (or a different body part entirely), STOP.
+            - Set verdict to "MISMATCH".
+            - In "changes", explain that the conditions appear unrelated.
+
+            STEP 2: PROGRESSION (Only if consistent)
+            - VERDICT: "IMPROVED", "WORSENED", or "STABLE".
+            - CHANGES: 3 visual differences.
+            - RECOMMENDATION: Advice based on progress.
+
+            Return ONLY raw JSON. Structure:
             {
-              "verdict": "IMPROVED" | "WORSENED" | "STABLE",
-              "changes": ["string", "string", "string"],
-              "recommendation": "string",
-              "different conditions": "string"
+              "verdict": "IMPROVED" | "WORSENED" | "STABLE" | "MISMATCH",
+              "changes": ["string"],
+              "recommendation": "string"
             }` 
             },
             { type: "image_url", image_url: { url: cImg1 } },
@@ -199,18 +202,15 @@ export const compareProgression = async (img1: string, img2: string): Promise<Co
 
     const data = await tryGroqAnalysis(payload);
     const content = data.choices[0].message.content;
-    
-    // Clean JSON output (remove ```json if present)
     const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
-    
     return JSON.parse(cleanJson);
 
   } catch (error) {
     console.error("Comparison Failed", error);
     return {
       verdict: "UNCLEAR",
-      changes: ["Could not analyze progression due to image quality or server error."],
-      recommendation: "Please try again with clearer photos."
+      changes: ["Could not analyze progression."],
+      recommendation: "Please try again."
     };
   }
 };
