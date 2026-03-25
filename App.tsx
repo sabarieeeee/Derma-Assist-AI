@@ -70,9 +70,100 @@ const StepRow: React.FC<{ step: string; text: string }> = ({ step, text }) => (
   </div>
 );
 
+const HistoryCard: React.FC<{ 
+  entry: TimelineEntry;
+  onClick: () => void;
+  isSelected?: boolean;
+  onDelete?: () => void;
+}> = ({ entry, onClick, isSelected, onDelete }) => (
+  <div 
+    onClick={onClick}
+    className={`p-4 rounded-[30px] border flex gap-5 items-center transition-all cursor-pointer group relative ${
+      isSelected 
+        ? 'bg-blue-50 border-blue-400 shadow-md' 
+        : 'bg-white/40 backdrop-blur-lg border-white shadow-sm hover:bg-white/60 active:scale-95'
+    }`}
+  >
+    {isSelected && (
+      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center shadow-md">
+        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+      </div>
+    )}
+
+    <div className={`w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm ${isSelected ? 'opacity-80' : ''}`}>
+      <img src={entry.imageData} className="w-full h-full object-cover" />
+    </div>
+    <div className="flex-1">
+      <h4 className={`font-black text-slate-900 leading-tight mb-1 text-[16px] ${isSelected ? 'text-blue-900' : ''}`}>{String(entry.label)}</h4>
+      <p className={`text-slate-400 font-bold uppercase tracking-widest text-[10px] ${isSelected ? 'text-blue-500' : ''}`}>{new Date(entry.timestamp).toLocaleDateString()}</p>
+    </div>
+    
+    {onDelete && (
+      <button 
+        onClick={(evt) => { evt.stopPropagation(); onDelete(); }}
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+      </button>
+    )}
+  </div>
+);
+
+/* ================= NEW FOOTER COMPONENT ================= */
+
+const Footer: React.FC = () => (
+  <footer className="mt-12 bg-[#0F172A] w-full rounded-t-[40px] px-8 pt-12 pb-36 text-slate-300 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] relative z-10">
+    <div className="grid grid-cols-2 gap-y-4 gap-x-4 mb-8">
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">FAQ</a>
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Diseases dictionary</a>
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Privacy Policy</a>
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Terms of use</a>
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Cancel subscription</a>
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Money back policy</a>
+      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600 col-span-2">Billing terms</a>
+    </div>
+
+    <div className="mb-6 border-t border-slate-700/50 pt-6">
+      <p className="text-[12.5px] leading-relaxed opacity-90">
+        <strong className="text-white">Derma Assist AI</strong> is not intended to perform diagnosis, but rather to provide users the ability to image, track, and monitor any areas of skin concern.
+      </p>
+    </div>
+
+    <div className="mb-10">
+      <p className="text-[12.5px] leading-relaxed opacity-90">
+        If you have any questions about our AI system, contact us via email <br/>
+        <a href="mailto:support@derma-assist.com" className="font-bold text-white mt-1.5 inline-block text-[14px] hover:text-blue-400 transition-colors">support@derma-assist.com</a>
+      </p>
+    </div>
+
+    <div className="flex gap-3 mb-10">
+      {/* Social Icons */}
+      {[
+        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>,
+        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>,
+        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>,
+        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>,
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+      ].map((icon, i) => (
+        <a key={i} href="#" className="w-11 h-11 rounded-[14px] border border-slate-700 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all duration-300">
+          {icon}
+        </a>
+      ))}
+    </div>
+
+    <div className="border-t border-slate-700/50 pt-6 flex flex-col gap-2">
+      <p className="text-[11px] font-black tracking-wide text-slate-500 uppercase">
+        Derma Assist AI | All Rights Reserved
+      </p>
+      <p className="text-[10px] font-bold text-slate-500">
+        Copyright © 2026. Designed by Sabarinath P.
+      </p>
+    </div>
+  </footer>
+);
+
 /* ================= UTILS (CRITICAL FIX FOR IOS) ================= */
 
-// Helper to downscale images to prevent iOS Memory Crash
 const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -82,7 +173,6 @@ const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> 
       let width = img.width;
       let height = img.height;
       
-      // Calculate new dimensions
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
@@ -93,13 +183,11 @@ const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> 
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, width, height);
       
-      // Compress to JPEG 0.7 quality to save memory
       resolve(canvas.toDataURL("image/jpeg", 0.7));
     };
-    img.onerror = () => resolve(base64Str); // Fallback to original
+    img.onerror = () => resolve(base64Str);
   });
 };
-
 
 /* ================= MAIN APP ================= */
 
@@ -114,7 +202,6 @@ export default function App() {
   const [detailCategory, setDetailCategory] = useState<DetailCategory>(null);
   const [helperIdx, setHelperIdx] = useState(0);
   
-  // New State for Comparison Selection
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -125,13 +212,11 @@ export default function App() {
     if (saved) try { setEntries(JSON.parse(saved)); } catch (e) {}
   }, []);
 
-  // CRITICAL FIX: Safe LocalStorage Saving
   useEffect(() => {
     try {
       localStorage.setItem('derm_history', JSON.stringify(entries));
     } catch (e) {
       console.warn("Storage Quota Exceeded - History not saved to prevent crash");
-      // Optional: You could slice the array here to keep only the last 5 entries
     }
   }, [entries]);
 
@@ -171,8 +256,6 @@ export default function App() {
       reader.onload = async (re) => {
         const result = re.target?.result;
         if (typeof result === 'string') {
-          // CRITICAL FIX: Compress immediately before setting state
-          // This prevents the 10MB+ string from crashing React State on iOS
           const compressed = await compressImageForUI(result);
           setSelectedImage(compressed);
           setShowUploadSheet(false);
@@ -190,7 +273,6 @@ export default function App() {
     setAnalysis(null); 
 
     try {
-      // The image is already compressed from handleUpload, so it's safe to send
       const result = await analyzeSkinImage(selectedImage);
       
       if (!result) throw new Error("No data received");
@@ -200,7 +282,7 @@ export default function App() {
       const newEntry: TimelineEntry = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
-        imageData: selectedImage, // Storing the compressed version is safe
+        imageData: selectedImage, 
         label: result.diseaseName || (result.isHealthy ? 'Healthy Skin' : 'Analysis'),
         analysis: result
       };
@@ -218,7 +300,6 @@ export default function App() {
     }
   };
 
-  // Helper to extract the list based on category
   const getDetailList = (): (AnalysisPoint | string)[] => {
     if (!analysis) return [];
     
@@ -254,8 +335,8 @@ export default function App() {
 
       <main className="flex-1 relative">
         {currentScreen === 'home' && (
-          <div className="px-8 pt-8 pb-32 fade-in-up">
-            <div className="mb-10 text-center">
+          <div className="fade-in-up">
+            <div className="px-8 pt-8 mb-10 text-center">
               <h2 className="text-[34px] font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">Smart Skin Condition Analyzer.</h2>
               <p className="text-[14px] text-slate-500 font-medium leading-relaxed max-w-[90%] mx-auto mb-10">
                 Identify visual patterns and track your healing journey with AI verification benchmarks.
@@ -284,30 +365,10 @@ export default function App() {
                 <StepRow step="2" text="AI verification & pattern benchmarking" />
                 <StepRow step="3" text="Get comprehensive care report" />
               </SectionCard>
-
-              <div className="mt-8 p-6 rounded-[32px] bg-amber-50/40 border border-amber-100 shadow-sm text-left">
-                <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                  Important Note
-                </h4>
-                <p className="text-[11.5px] text-amber-900/70 font-bold leading-relaxed">
-                  This tool uses AI for educational guidance and pattern identification only. It is not a substitute for clinical diagnosis. Always consult a certified dermatologist for professional medical advice.
-                </p>
-              </div>
-
-              <div className="mt-12 mb-4 text-center">
-                <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.25em] mb-1">
-                  Designed & Developed by
-                </p>
-                <h4 className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.15em]">
-                  Sabarinath ©
-                </h4>
-                <p className="text-[8px] font-bold text-slate-300/50 mt-2">
-                  v3.1.0 • 2026
-                </p>
-              </div>
-
             </div>
+            
+            {/* The brand new footer replacing the old basic text */}
+            <Footer />
           </div>
         )}
 
@@ -418,21 +479,12 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 {entries.slice().reverse().map(e => (
-                  <div key={e.id} onClick={() => { if (e.analysis) { setAnalysis(e.analysis); setSelectedImage(e.imageData); navigateTo('result'); } }} className="bg-white/40 backdrop-blur-lg p-4 rounded-[30px] border border-white shadow-sm flex gap-5 items-center active:scale-95 transition-all cursor-pointer group relative">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm shrink-0">
-                      <img src={e.imageData} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-black text-slate-900 text-[16px] leading-tight mb-1">{String(e.label)}</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(e.timestamp).toLocaleDateString()}</p>
-                    </div>
-                    <button 
-                      onClick={(evt) => deleteEntry(e.id, evt)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  </div>
+                  <HistoryCard 
+                    key={e.id}
+                    entry={e}
+                    onClick={() => { if (e.analysis) { setAnalysis(e.analysis); setSelectedImage(e.imageData); navigateTo('result'); } }}
+                    onDelete={() => deleteEntry(e.id, null as any)} 
+                  />
                 ))}
               </div>
             )}
@@ -448,26 +500,16 @@ export default function App() {
                  {compareSelection.length === 2 ? "Ready to Compare" : `Select 2 Scans (${compareSelection.length}/2)`}
               </p>
               
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                  {entries.slice().reverse().map(e => {
                    const isSelected = compareSelection.includes(e.id);
                    return (
-                     <div 
-                       key={e.id} 
-                       onClick={() => toggleCompareSelection(e.id)}
-                       className={`p-3 rounded-[24px] border flex items-center gap-4 transition-all cursor-pointer ${
-                         isSelected ? 'bg-blue-50 border-blue-400 shadow-md' : 'bg-white/40 border-white hover:bg-white/60'
-                       }`}
-                     >
-                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300'}`}>
-                         {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
-                       </div>
-                       <img src={e.imageData} className="w-10 h-10 rounded-xl object-cover" />
-                       <div className="flex-1">
-                          <h4 className="font-bold text-slate-800 text-[13px]">{e.label}</h4>
-                          <p className="text-[9px] text-slate-400 font-bold uppercase">{new Date(e.timestamp).toLocaleDateString()}</p>
-                       </div>
-                     </div>
+                      <HistoryCard 
+                        key={e.id}
+                        entry={e}
+                        onClick={() => toggleCompareSelection(e.id)}
+                        isSelected={isSelected}
+                      />
                    );
                  })}
               </div>
