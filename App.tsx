@@ -109,60 +109,64 @@ const HistoryCard: React.FC<{
   </div>
 );
 
-/* ================= NEW FOOTER COMPONENT ================= */
-
-const Footer: React.FC = () => (
-  <footer className="mt-12 bg-[#0F172A] w-full rounded-t-[40px] px-8 pt-12 pb-36 text-slate-300 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] relative z-10">
-    <div className="grid grid-cols-2 gap-y-4 gap-x-4 mb-8">
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">FAQ</a>
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Diseases dictionary</a>
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Privacy Policy</a>
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Terms of use</a>
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Cancel subscription</a>
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600">Money back policy</a>
-      <a href="#" className="text-[13px] font-medium hover:text-white transition-colors underline underline-offset-2 decoration-slate-600 col-span-2">Billing terms</a>
+/* ================= PREMIUM FOOTER ================= */
+const Footer = React.forwardRef<HTMLElement, { onLinkClick: () => void }>(({ onLinkClick }, ref) => (
+  <footer ref={ref} className="mt-8 bg-white w-full rounded-t-[44px] px-8 pt-12 pb-16 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] border-t border-slate-100 relative z-10">
+    
+    {/* Top Section: App Info & Contact */}
+    <div className="mb-10 text-center">
+       <div className="w-12 h-12 mx-auto bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-blue-100">
+         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+       </div>
+       <h3 className="text-[14px] font-black text-slate-900 tracking-widest uppercase mb-3">Derma Assist AI</h3>
+       <p className="text-[12px] text-slate-500 leading-relaxed font-medium mb-6 px-2">
+         An educational tool designed to help you track and monitor skin concerns. Not a substitute for professional clinical diagnosis.
+       </p>
+       <div className="inline-block px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100">
+         <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contact Support</span>
+         <a href="mailto:support@derma-assist.com" className="text-[13px] font-black text-blue-500 hover:text-blue-600 transition-colors">support@derma-assist.com</a>
+       </div>
     </div>
 
-    <div className="mb-6 border-t border-slate-700/50 pt-6">
-      <p className="text-[12.5px] leading-relaxed opacity-90">
-        <strong className="text-white">Derma Assist AI</strong> is not intended to perform diagnosis, but rather to provide users the ability to image, track, and monitor any areas of skin concern.
-      </p>
+    {/* Middle Section: Links */}
+    <div className="grid grid-cols-2 gap-y-4 gap-x-4 mb-10 border-t border-slate-100 pt-8">
+      {['FAQ', 'Diseases Dictionary', 'Privacy Policy', 'Terms of Use', 'Cancel Subscription', 'Refund Policy', 'Billing Terms'].map(link => (
+        <button 
+          key={link} 
+          onClick={onLinkClick} 
+          className="text-left text-[13px] font-bold text-slate-600 hover:text-blue-500 transition-colors"
+        >
+          {link}
+        </button>
+      ))}
     </div>
 
-    <div className="mb-10">
-      <p className="text-[12.5px] leading-relaxed opacity-90">
-        If you have any questions about our AI system, contact us via email <br/>
-        <a href="mailto:support@derma-assist.com" className="font-bold text-white mt-1.5 inline-block text-[14px] hover:text-blue-400 transition-colors">support@derma-assist.com</a>
-      </p>
-    </div>
-
-    <div className="flex gap-3 mb-10">
-      {/* Social Icons */}
+    {/* Bottom Section: Socials & Copyright */}
+    <div className="flex justify-center gap-3 mb-8">
       {[
         <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>,
         <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>,
-        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>,
-        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>,
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
       ].map((icon, i) => (
-        <a key={i} href="#" className="w-11 h-11 rounded-[14px] border border-slate-700 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all duration-300">
+        <a key={i} href="#" className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors">
           {icon}
         </a>
       ))}
     </div>
 
-    <div className="border-t border-slate-700/50 pt-6 flex flex-col gap-2">
-      <p className="text-[11px] font-black tracking-wide text-slate-500 uppercase">
-        Derma Assist AI | All Rights Reserved
+    <div className="text-center">
+      <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-1">
+        Derma Assist AI
       </p>
-      <p className="text-[10px] font-bold text-slate-500">
-        Copyright © 2026. Designed by Sabarinath P.
+      <p className="text-[9px] font-bold text-slate-300">
+        Copyright © 2026. Designed by Sabarinath.
+        V 3.2.0
       </p>
     </div>
   </footer>
-);
+));
 
-/* ================= UTILS (CRITICAL FIX FOR IOS) ================= */
+/* ================= UTILS ================= */
 
 const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> => {
   return new Promise((resolve) => {
@@ -172,17 +176,14 @@ const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> 
       const canvas = document.createElement("canvas");
       let width = img.width;
       let height = img.height;
-      
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
       }
-      
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, width, height);
-      
       resolve(canvas.toDataURL("image/jpeg", 0.7));
     };
     img.onerror = () => resolve(base64Str);
@@ -191,7 +192,7 @@ const compressImageForUI = (base64Str: string, maxWidth = 800): Promise<string> 
 
 /* ================= MAIN APP ================= */
 
-type Screen = 'home' | 'preview' | 'analyzing' | 'result' | 'detail' | 'history' | 'compare';
+type Screen = 'home' | 'preview' | 'analyzing' | 'result' | 'detail' | 'history' | 'compare' | 'busy';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -201,11 +202,45 @@ export default function App() {
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [detailCategory, setDetailCategory] = useState<DetailCategory>(null);
   const [helperIdx, setHelperIdx] = useState(0);
-  
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  
+  // States for scrolling, footer observer, and splash screen
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
+  const [introFade, setIntroFade] = useState(false);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
+
+  // Intro Splash Screen Logic
+  useEffect(() => {
+    const timer1 = setTimeout(() => setIntroFade(true), 2000); 
+    const timer2 = setTimeout(() => setShowIntro(false), 2500); 
+    return () => { clearTimeout(timer1); clearTimeout(timer2); };
+  }, []);
+
+  // Header Scroll Blur Logic
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Footer Observer Logic (Hides the FAB)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsFooterVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Triggers when 10% of footer is on screen
+    );
+    if (footerRef.current) observer.observe(footerRef.current);
+    return () => observer.disconnect();
+  }, [currentScreen]);
 
   useEffect(() => {
     const saved = localStorage.getItem('derm_history');
@@ -216,7 +251,7 @@ export default function App() {
     try {
       localStorage.setItem('derm_history', JSON.stringify(entries));
     } catch (e) {
-      console.warn("Storage Quota Exceeded - History not saved to prevent crash");
+      console.warn("Storage Quota Exceeded");
     }
   }, [entries]);
 
@@ -274,9 +309,7 @@ export default function App() {
 
     try {
       const result = await analyzeSkinImage(selectedImage);
-      
       if (!result) throw new Error("No data received");
-
       setAnalysis(result);
 
       const newEntry: TimelineEntry = {
@@ -288,10 +321,7 @@ export default function App() {
       };
       
       setEntries(prev => [...prev, newEntry]);
-
-      setTimeout(() => {
-        navigateTo('result');
-      }, 2000);
+      setTimeout(() => navigateTo('result'), 2000);
 
     } catch (err) {
       alert("Analysis failed. Please try again.");
@@ -302,31 +332,38 @@ export default function App() {
 
   const getDetailList = (): (AnalysisPoint | string)[] => {
     if (!analysis) return [];
-    
     switch (detailCategory) {
-      case 'Symptoms':
-        return analysis.symptoms && analysis.symptoms.length > 0 ? analysis.symptoms : [{ title: "No Data", details: "No specific symptoms listed." }];
-      case 'Causes':
-        return analysis.reasons && analysis.reasons.length > 0 ? analysis.reasons : [{ title: "No Data", details: "No specific reasons listed." }];
-      case 'Care & Precautions':
-        return [...(analysis.precautions || []), ...(analysis.prevention || [])];
+      case 'Symptoms': return analysis.symptoms && analysis.symptoms.length > 0 ? analysis.symptoms : [{ title: "No Data", details: "No specific symptoms listed." }];
+      case 'Causes': return analysis.reasons && analysis.reasons.length > 0 ? analysis.reasons : [{ title: "No Data", details: "No specific reasons listed." }];
+      case 'Care & Precautions': return [...(analysis.precautions || []), ...(analysis.prevention || [])];
       case 'Healing & Tracking':
         const items = [...(analysis.treatments || [])];
-        if (analysis.healingPeriod) {
-           items.unshift({ title: "Estimated Recovery", details: analysis.healingPeriod });
-        }
+        if (analysis.healingPeriod) items.unshift({ title: "Estimated Recovery", details: analysis.healingPeriod });
         return items;
-      default:
-        return [];
+      default: return [];
     }
   };
 
   return (
     <div className="flex flex-col min-h-screen max-w-md mx-auto relative bg-[#F8FAFC] overflow-x-hidden antialiased">
        
-      <header className="px-6 pt-14 pb-5 flex items-center justify-between sticky top-0 z-40 bg-[#F8FAFC]/40 backdrop-blur-2xl border-b border-white/20">
+      {/* Intro Splash Screen Overlay - Uses the user's 9:16 PNG file */}
+      {showIntro && (
+        <div className={`fixed inset-0 z-[200] flex items-center justify-center bg-[#F8FAFC] transition-opacity duration-700 ${introFade ? 'opacity-0' : 'opacity-100'}`}>
+          <img 
+            src="/splash.png" 
+            alt="Derma Assist AI Splash" 
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      {/* Updated Header with Scroll Blur */}
+      <header className={`px-6 pt-14 pb-5 flex items-center justify-between sticky top-0 z-40 transition-all duration-300 ${
+        isScrolled ? 'bg-white/80 backdrop-blur-2xl border-b border-slate-200/50 shadow-sm' : 'bg-transparent border-b border-transparent'
+      }`}>
         <h1 className="text-[13px] font-black tracking-[0.2em] text-slate-900 uppercase">Derma Assist AI</h1>
-        <div className="flex gap-2.5 nav-glass p-1.5 rounded-[22px] shadow-sm">
+        <div className="flex gap-2.5 bg-white/40 backdrop-blur-md border border-white/60 p-1.5 rounded-[22px] shadow-sm">
           <NavIconButton onClick={() => navigateTo('history')} active={currentScreen === 'history'} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
           <NavIconButton onClick={() => navigateTo('home')} active={currentScreen === 'home'} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>} />
           <NavIconButton onClick={() => navigateTo('compare')} active={currentScreen === 'compare'} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} />
@@ -367,8 +404,20 @@ export default function App() {
               </SectionCard>
             </div>
             
-            {/* The brand new footer replacing the old basic text */}
-            <Footer />
+            <Footer ref={footerRef} onLinkClick={() => navigateTo('busy')} />
+          </div>
+        )}
+
+        {currentScreen === 'busy' && (
+          <div className="p-8 pb-32 fade-in-up flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-[24px] flex items-center justify-center mb-6 shadow-sm border border-blue-100">
+               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Servers Busy</h2>
+            <p className="text-slate-500 font-medium leading-relaxed mb-10 px-4">
+              We are currently experiencing high traffic. This page is temporarily unavailable. Please try accessing it again later.
+            </p>
+            <LiquidGlassButton text="Go Back to Home" onClick={() => navigateTo('home')} />
           </div>
         )}
 
@@ -533,8 +582,11 @@ export default function App() {
         )}
       </main>
 
+      {/* FAB Container - Hides smoothly when footer is visible */}
       {(currentScreen === 'home' || currentScreen === 'history' || currentScreen === 'compare' || currentScreen === 'result') && (
-        <div className="fixed bottom-0 left-0 right-0 px-8 pb-10 z-[60] pointer-events-none">
+        <div className={`fixed bottom-0 left-0 right-0 px-8 pb-10 z-[60] pointer-events-none transition-all duration-500 ease-in-out ${
+          isFooterVisible ? 'opacity-0 translate-y-10' : 'opacity-100 translate-y-0'
+        }`}>
           <div className="max-w-[320px] mx-auto pointer-events-auto">
             <LiquidGlassButton 
               text={currentScreen === 'result' ? "Scan Complete" : "Start New Scan"}
