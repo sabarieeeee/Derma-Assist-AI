@@ -1,0 +1,8 @@
+
+{
+  "name": "DermAssist AI",
+  "description": "A modern AI-powered skin condition diagnosis and progress tracking application using Gemini.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
