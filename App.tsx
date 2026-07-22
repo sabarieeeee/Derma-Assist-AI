@@ -21,11 +21,14 @@ export default function App() {
   const [analysis, setAnalysis] = useState<SkinAnalysis | null>(null);
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   
-  // Modals & User States
+  // Modals & Mobile States
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  
+  // User Authentication & Profile States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
@@ -191,6 +194,7 @@ export default function App() {
   };
 
   const scrollToHowItWorks = () => {
+    setShowMobileMenu(false);
     if (currentScreen !== 'home') {
       setCurrentScreen('home');
       setTimeout(() => {
@@ -203,6 +207,7 @@ export default function App() {
 
   const navigateTo = (s: typeof currentScreen) => {
     setCurrentScreen(s);
+    setShowMobileMenu(false);
     scrollToTop();
   };
 
@@ -211,6 +216,7 @@ export default function App() {
     setIsLoggedIn(false);
     setUserEmail('');
     setUserName('');
+    setShowMobileMenu(false);
   };
 
   const deleteEntry = (id: string, e: React.MouseEvent) => {
@@ -333,8 +339,8 @@ export default function App() {
           {/* Diagonal hatch overlay */}
           <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(115deg,rgba(255,255,255,0.025) 0px,rgba(255,255,255,0.025) 1px,transparent 1px,transparent 56px)' }} aria-hidden="true"></div>
 
-          {/* NAV */}
-          <header className="relative z-10 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 pt-6 lg:pt-7">
+          {/* NAV HEADER */}
+          <header className="relative z-20 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 pt-6 lg:pt-7">
             <div onClick={() => navigateTo('home')} className="flex items-center gap-2.5 group cursor-pointer" aria-label="Derma Assist AI home">
               <Logo size={28} />
               <span className="text-white font-medium text-sm sm:text-base font-geist tracking-tight">
@@ -342,7 +348,7 @@ export default function App() {
               </span>
             </div>
 
-            {/* Nav Buttons (Ungrouped Pills) */}
+            {/* Desktop Nav Buttons (Shown on md+ screens) */}
             <nav className="hidden md:flex items-center gap-2" aria-label="Primary">
               <button 
                 onClick={() => navigateTo('home')} 
@@ -410,21 +416,21 @@ export default function App() {
               </a>
             </nav>
 
-            {/* Top Right Header Button */}
-            <div className="flex items-center gap-3">
+            {/* Right Header Buttons & Mobile Hamburger Menu Toggle */}
+            <div className="flex items-center gap-2 sm:gap-3">
               {isLoggedIn ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <button 
                     onClick={() => setShowProfileModal(true)}
-                    className="flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium font-geist text-white bg-white/10 hover:bg-white/20 transition-all border border-white/18 shadow-sm"
+                    className="flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-medium font-geist text-white bg-white/10 hover:bg-white/20 transition-all border border-white/18 shadow-sm"
                   >
                     <span className="w-2.5 h-2.5 rounded-full bg-[#c8f542]" />
-                    <span>{userName || userEmail.split('@')[0]}</span>
+                    <span className="max-w-[80px] sm:max-w-none truncate">{userName || userEmail.split('@')[0]}</span>
                     <iconify-icon icon="solar:user-bold" width="12" style={{ color: '#c8f542' }}></iconify-icon>
                   </button>
                   <button 
                     onClick={handleLogout}
-                    className="px-3 py-2 text-xs text-white/50 hover:text-white font-geist transition-colors"
+                    className="hidden sm:inline-block px-3 py-2 text-xs text-white/50 hover:text-white font-geist transition-colors"
                   >
                     Logout
                   </button>
@@ -432,15 +438,102 @@ export default function App() {
               ) : (
                 <button 
                   onClick={() => setShowLoginModal(true)} 
-                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium text-[#12300f] hover:brightness-105 transition-all duration-150 hover:scale-[1.04] font-geist" 
+                  className="flex items-center gap-1.5 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium text-[#12300f] hover:brightness-105 transition-all duration-150 hover:scale-[1.04] font-geist" 
                   style={{ backgroundColor: '#c8f542' }}
                 >
                   <iconify-icon icon="solar:user-bold" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
-                  Sign In / Account
+                  <span className="hidden sm:inline">Sign In / Account</span>
+                  <span className="sm:hidden">Sign In</span>
                 </button>
               )}
+
+              {/* Mobile Menu Hamburger Button */}
+              <button 
+                onClick={() => setShowMobileMenu(prev => !prev)}
+                className="md:hidden w-9 h-9 rounded-full bg-white/10 border border-white/18 text-white flex items-center justify-center hover:bg-white/20 transition-all active:scale-95"
+                aria-label="Toggle Navigation Menu"
+              >
+                <iconify-icon icon={showMobileMenu ? "solar:close-square-linear" : "solar:hamburger-menu-linear"} width="20"></iconify-icon>
+              </button>
             </div>
           </header>
+
+          {/* MOBILE NAVIGATION LIQUID GLASS DRAWER */}
+          {showMobileMenu && (
+            <div className="md:hidden relative z-20 px-5 pt-3 pb-4 animate-in slide-in-from-top-3 duration-300 font-geist">
+              <div className="liquid-glass-card rounded-2xl p-4 border border-white/20 shadow-2xl space-y-2">
+                <button 
+                  onClick={() => navigateTo('home')} 
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${
+                    currentScreen === 'home' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <iconify-icon icon="solar:home-2-linear" width="16"></iconify-icon>
+                  <span>Home</span>
+                </button>
+
+                <button 
+                  onClick={() => navigateTo('compare')} 
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${
+                    currentScreen === 'compare' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <iconify-icon icon="solar:notebook-linear" width="16"></iconify-icon>
+                  <span>Progression Mapping</span>
+                </button>
+
+                <button 
+                  onClick={() => navigateTo('history')} 
+                  className={`w-full flex items-center justify-between p-3 rounded-xl text-xs font-medium transition-all ${
+                    currentScreen === 'history' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <iconify-icon icon="solar:book-bookmark-linear" width="16"></iconify-icon>
+                    <span>Scan History</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#c8f542] text-[#12300f] font-bold">{entries.length}</span>
+                </button>
+
+                <button 
+                  onClick={() => { setShowChatModal(true); setShowMobileMenu(false); }} 
+                  className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-[#c8f542] bg-[#c8f542]/10 border border-[#c8f542]/30 transition-all"
+                >
+                  <iconify-icon icon="solar:chat-round-line-linear" width="16"></iconify-icon>
+                  <span>AI Assistant</span>
+                </button>
+
+                <button 
+                  onClick={() => navigateTo('pricing')} 
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${
+                    currentScreen === 'pricing' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <iconify-icon icon="solar:chart-2-linear" width="16"></iconify-icon>
+                  <span>Subscription</span>
+                </button>
+
+                <a 
+                  href="#about" 
+                  onClick={() => navigateTo('home')}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 transition-all"
+                >
+                  <iconify-icon icon="solar:info-circle-linear" width="16"></iconify-icon>
+                  <span>About Developers</span>
+                </a>
+
+                {isLoggedIn && (
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-red-400 hover:bg-red-500/10 transition-all pt-3 border-t border-white/10"
+                  >
+                    <iconify-icon icon="solar:logout-2-linear" width="16"></iconify-icon>
+                    <span>Sign Out</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* MAIN BODY VIEWS */}
           {currentScreen === 'home' && (
