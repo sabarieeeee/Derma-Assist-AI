@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Logo from './Logo';
 
 interface ChatMessage {
   id: string;
@@ -37,7 +36,7 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
 
     const isFresh = !diseaseName;
     const greetingText = isFresh
-      ? `Welcome to your dedicated Qwen AI Assistant. I have no prior context for this session. How can I assist you with your skin health today?`
+      ? `Welcome to your dedicated AI Assistant. I have no prior context for this session. How can I assist you with your skin health today?`
       : `Hello! I analyzed your recent scan indicating potential [${diseaseName}]. What specific precautions or symptoms would you like to discuss?`;
 
     setMessages([{ id: '1', sender: 'ai', text: greetingText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
@@ -61,22 +60,36 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
       return;
     }
 
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), sender: 'user', text: userText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    const userMsg: ChatMessage = { 
+      id: crypto.randomUUID(), 
+      sender: 'user', 
+      text: userText, 
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    };
+    
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
 
     try {
       const apiKey = import.meta.env.VITE_GROQ_API_KEY || '';
+      
+      if (!apiKey) {
+        throw new Error("Missing Groq API Key in environment variables.");
+      }
+
       const sysPrompt = diseaseName 
-        ? `You are an expert AI Dermatological Assistant powered by Qwen. Context: Patient scan detected "${diseaseName}". Answer specifically based on this condition.`
-        : `You are an expert AI Dermatological Assistant powered by Qwen. You have no prior scan context. Provide general, medically sound, and empathetic skin care advice.`;
+        ? `You are an expert Dermatological Assistant. Context: Patient scan detected "${diseaseName}". Answer specifically based on this condition. Be concise and empathetic.`
+        : `You are an expert Dermatological Assistant. You have no prior scan context. Provide general, medically sound, and empathetic skin care advice. Be concise.`;
 
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${apiKey}` 
+        },
         body: JSON.stringify({
-          model: 'qwen-2.5-32b',
+          model: 'llama-3.1-70b-versatile', // Guaranteed stable Groq model for text generation
           messages: [
             { role: 'system', content: sysPrompt },
             ...messages.filter(m => m.id !== '1').map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
@@ -87,20 +100,35 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
         })
       });
 
-      if (!response.ok) throw new Error("API call failed");
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Groq Chat API Error:", response.status, errorData);
+        throw new Error(`API Error: ${response.status}`);
+      }
 
       const data = await response.json();
       const reply = data.choices?.[0]?.message?.content;
       
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), sender: 'ai', text: reply, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+      setMessages(prev => [...prev, { 
+        id: crypto.randomUUID(), 
+        sender: 'ai', 
+        text: reply || "I'm sorry, I couldn't process that request.", 
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      }]);
       
       // Update Quota
       const newCount = chatCount + 1;
       setChatCount(newCount);
       localStorage.setItem('derm_chat_quota', JSON.stringify({ date: new Date().toDateString(), count: newCount }));
 
-    } catch (err) {
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), sender: 'ai', text: "Connection to Qwen Engine lost. Please verify your Groq API key and network connection.", timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+    } catch (err: any) {
+      console.error("Chatbot failed:", err);
+      setMessages(prev => [...prev, { 
+        id: crypto.randomUUID(), 
+        sender: 'ai', 
+        text: `Connection error: ${err.message}. Please verify your network and Groq API key limits.`, 
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      }]);
     } finally {
       setLoading(false);
     }
@@ -154,7 +182,7 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
              <div className="flex justify-start">
               <div className="bg-[#1a3821]/50 border border-[#2d5a35]/50 rounded-3xl rounded-tl-none p-5 text-sm text-[#c8f542] flex items-center gap-3">
                 <div className="w-4 h-4 border-2 border-[#c8f542] border-t-transparent rounded-full animate-spin"></div>
-                Qwen is synthesizing response...
+                Engine is synthesizing response...
               </div>
             </div>
           )}
@@ -167,7 +195,7 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Consult Qwen about symptoms, routines, or care..."
+            placeholder="Consult AI about symptoms, routines, or care..."
             className="flex-1 p-4 rounded-2xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-[#c8f542] focus:bg-white/10 transition-all"
           />
           <button type="submit" disabled={!input.trim() || loading} className="px-8 py-4 rounded-2xl font-bold text-sm text-[#12300f] uppercase tracking-wider transition-all disabled:opacity-50 hover:scale-[1.02] shadow-[0_0_20px_rgba(200,245,66,0.3)]" style={{ backgroundColor: '#c8f542' }}>
