@@ -5,12 +5,12 @@ export interface AnalysisPoint {
 
 export interface SkinAnalysis {
   diseaseName: string;
-  overview: string;             // Fixes the 'overview does not exist' error
-  severityLevel: number;        // Changes to number to fix the 'arithmetic operation' error
+  overview: string;
+  severityLevel: number;
   precautions?: string[];
   causes?: string[];
   recommendations?: string[];
-  [key: string]: any;           // Catch-all to prevent other missing property errors
+  [key: string]: any;
 }
 
 export interface TimelineEntry {
@@ -19,4 +19,11 @@ export interface TimelineEntry {
   imageData: string;
   label: string;
   analysis?: SkinAnalysis;
+}
+
+export interface ComparisonResult {
+  verdict: 'Improved' | 'Unchanged' | 'Requires Medical Attention';
+  summary: string;
+  keyChanges: string[];
+  recommendations: string[];
 }
