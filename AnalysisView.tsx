@@ -4,7 +4,8 @@ import SkinChatModal from './SkinChatModal';
 
 interface AnalysisViewProps {
   analysis: SkinAnalysis;
-  selectedImage?: string | null;
+  selectedImage?: string | null; // <-- Add " | null" here
+}
 }
 
 export const AnalysisView: React.FC<AnalysisViewProps> = ({ analysis, selectedImage }) => {

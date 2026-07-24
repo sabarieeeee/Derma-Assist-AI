@@ -23,8 +23,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
   const [emergencyContact, setEmergencyContact] = useState('Dr. Sarah Jenkins (+1 555-0192)');
   const [isSaved, setIsSaved] = useState(false);
 
+  // Prevent background scrolling when modal is open
   useEffect(() => {
-    // 1. Check derm_user first for custom name
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  useEffect(() => {
     const savedUser = localStorage.getItem('derm_user');
     let initialName = '';
     if (savedUser) {
@@ -36,7 +43,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
       } catch (e) {}
     }
 
-    // 2. Check derm_patient_profile
     const storedProfile = localStorage.getItem('derm_patient_profile');
     if (storedProfile) {
       try {
@@ -63,7 +69,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
     e.preventDefault();
     const finalName = name.trim() || userEmail.split('@')[0];
 
-    // Update patient profile object
     const profileObj = {
       name: finalName,
       email: userEmail,
@@ -83,7 +88,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
     };
     localStorage.setItem('derm_patient_profile', JSON.stringify(profileObj));
 
-    // Update user auth object to overwrite "Google User" / "Apple User"
     const savedUser = localStorage.getItem('derm_user');
     if (savedUser) {
       try {
@@ -107,8 +111,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-xl bg-[#0a2a12] border border-[#1d4a25] p-6 sm:p-8 rounded-[28px] shadow-2xl relative max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300"
+        className="w-full max-w-xl bg-[#0a2a12] border border-[#1d4a25] p-6 sm:p-8 rounded-[28px] shadow-2xl relative max-h-[90vh] overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
+        onWheel={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
+        data-lenis-prevent="true"
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
@@ -118,7 +125,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
             </div>
             <div>
               <h3 className="font-semibold text-2xl text-white">{name || 'Patient Profile'}</h3>
-              <p className="text-xs text-white/50">{userEmail}</p>
+              <p className="text-xs text-[#c8f542] text-white/50">{userEmail}</p>
             </div>
           </div>
           <button 
@@ -133,7 +140,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
         <div className="p-3.5 rounded-2xl bg-[#c8f542]/10 border border-[#c8f542]/30 mb-6 flex items-center gap-3 text-xs">
           <iconify-icon icon="solar:shield-check-bold" width="22" style={{ color: '#c8f542' }}></iconify-icon>
           <div>
-            <p className="font-semibold text-[#c8f542]">AES-256 Encrypted Telemetry Active</p>
+            <p className="font-semibold text-[#c8f542]">End to End Encrypted</p>
             <p className="text-white/60 text-[10px]">Your personal health records are stored locally and encrypted.</p>
           </div>
         </div>
@@ -147,7 +154,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Sabarinath"
+              placeholder="Enter Your Full Name"
               className="w-full p-3 rounded-xl bg-white/5 border border-white/15 text-white focus:outline-none focus:border-[#c8f542]"
             />
           </div>
@@ -171,7 +178,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
               >
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Non-Binary">Non-Binary</option>
+                <option value="Transgender">Transgender</option>
                 <option value="Prefer not to say">Prefer not to say</option>
               </select>
             </div>
@@ -288,7 +295,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
           <div className="pt-4 flex items-center justify-between gap-4">
             <button 
               type="button"
-              onClick={() => { onLogout(); onClose(); }}
+              onClick={() => onLogout()} 
               className="px-5 py-3 rounded-full text-red-400 font-geist text-xs font-medium border border-red-500/30 hover:bg-red-500/10 transition-colors"
             >
               Sign Out

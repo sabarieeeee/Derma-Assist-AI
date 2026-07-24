@@ -1,27 +1,16 @@
 export interface AnalysisPoint {
-  title: string;
-  details: string;
-}
-
-export interface ComparisonResult {
-  // Added 'MISMATCH' to the allowed values
-  verdict: "IMPROVED" | "WORSENED" | "STABLE" | "UNCLEAR" | "MISMATCH";
-  changes: string[];
-  recommendation: string;
+  label: string;
+  value: string;
 }
 
 export interface SkinAnalysis {
-  isSkin: boolean;
-  isHealthy: boolean;
-  diseaseName: string | null;
-  description: string | null;
-  symptoms: AnalysisPoint[] | string[];
-  reasons: AnalysisPoint[] | string[];
-  precautions: AnalysisPoint[] | string[];
-  prevention: AnalysisPoint[] | string[];
-  treatments: AnalysisPoint[] | string[];
-  medicines: string[];
-  healingPeriod: string | null;
+  diseaseName: string;
+  overview: string;             // Fixes the 'overview does not exist' error
+  severityLevel: number;        // Changes to number to fix the 'arithmetic operation' error
+  precautions?: string[];
+  causes?: string[];
+  recommendations?: string[];
+  [key: string]: any;           // Catch-all to prevent other missing property errors
 }
 
 export interface TimelineEntry {
@@ -31,5 +20,3 @@ export interface TimelineEntry {
   label: string;
   analysis?: SkinAnalysis;
 }
-
-export type DetailCategory = 'Symptoms' | 'Causes' | 'Care & Precautions' | 'Healing & Tracking' | null;

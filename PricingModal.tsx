@@ -2,277 +2,250 @@ import React, { useState } from 'react';
 
 interface PricingModalProps {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (planId: 'day' | 'pro' | 'annual') => void;
 }
 
 export const PricingModal: React.FC<PricingModalProps> = ({ onClose, onSuccess }) => {
-  const [selectedPlan, setSelectedPlan] = useState<'day' | 'pro' | 'lifetime'>('pro');
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple' | 'upi'>('card');
-
-  // Checkout inputs
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [name, setName] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<'day' | 'pro' | 'annual'>('pro');
+  const [coupon, setCoupon] = useState('');
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  
+  // NEW: State for our custom in-app success popup
+  const [successMsg, setSuccessMsg] = useState('');
 
   const plans = {
-    day: { name: 'Day Pass', price: '$2.99', period: '/ 24 hours', details: '50 High-Res Scans' },
-    pro: { name: 'Pro Monthly', price: '$19.99', period: '/ month', details: 'Unlimited Scans & Priority Engine' },
-    lifetime: { name: 'Clinical Lifetime', price: '$99.00', period: 'one-time', details: 'Unlimited Lifetime Scans & PDF Reports' }
+    day: { id: 'day', name: 'Day Pass', price: 99, period: '/ 24 hours', scans: 15, details: '+15 High-Res Scans' },
+    pro: { id: 'pro', name: 'Pro Monthly', price: 2599, period: '/ month', scans: 100, details: '+100 Premium Scans' },
+    annual: { id: 'annual', name: 'Clinical Annual', price: 19999, period: '/ year', scans: 1300, details: '+1300 Premium Scans' }
   };
 
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-
+  // Helper to trigger the floating toast and clear it after 3.5 seconds
+  const showToast = (message: string) => {
+    setSuccessMsg(message);
     setTimeout(() => {
-      setIsProcessing(false);
-      localStorage.setItem('derm_subscription', JSON.stringify({
-        plan: selectedPlan,
-        activatedAt: Date.now(),
-        isUnlimited: true
-      }));
-      localStorage.setItem('derm_scan_quota', JSON.stringify({ date: new Date().toDateString(), count: 0 }));
-      alert(`Payment successful! Your ${plans[selectedPlan].name} is now active.`);
-      onSuccess();
-    }, 1200);
+      setSuccessMsg('');
+    }, 3500);
   };
+
+  const applyCoupon = () => {
+    const code = coupon.trim().toUpperCase();
+    if (code === 'DERMAPREMIUM') {
+      setDiscountPercent(1.0);
+      setErrorMsg('');
+      showToast('Premium Access Granted! 100% Off Applied.');
+    } else if (code === 'DERMANEW') {
+      setDiscountPercent(0.15);
+      setErrorMsg('');
+      showToast('Welcome Offer Applied! 15% Off.');
+    } else if (code === 'FLAT90') {
+      setDiscountPercent(0.90);
+      setErrorMsg('');
+      showToast('Test Mode: 90% Off Applied!');
+    } else {
+      setDiscountPercent(0);
+      setSuccessMsg('');
+      setErrorMsg('Invalid Coupon Code');
+    }
+  };
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayCheckout = async () => {
+    setIsProcessing(true);
+    setErrorMsg('');
+    const currentPlan = plans[selectedPlan];
+    const finalAmount = Math.round(currentPlan.price * (1 - discountPercent));
+
+    // 100% Discount Bypass
+    if (finalAmount === 0) {
+      setTimeout(() => {
+        onSuccess(selectedPlan);
+        setIsProcessing(false);
+      }, 1000); 
+      return;
+    }
+
+    const res = await loadRazorpayScript();
+    
+    if (!res) {
+      setErrorMsg('Razorpay SDK failed to load. Please check your connection.');
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      // 1. Create Order on Backend
+      const orderResponse = await fetch('/.netlify/functions/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: finalAmount * 100 }) // Send paise
+      });
+      
+      const orderData = await orderResponse.json();
+
+      if (!orderResponse.ok || !orderData.order_id) {
+        throw new Error(orderData.error || 'Failed to create secure order');
+      }
+
+      // 2. Open Razorpay Checkout Modal
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID, 
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Derma Assist AI',
+        description: currentPlan.name,
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          try {
+            // 3. Verify Signature on Backend
+            const verifyResponse = await fetch('/.netlify/functions/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            const verifyData = await verifyResponse.json();
+
+            if (verifyResponse.ok && verifyData.success) {
+              onSuccess(selectedPlan);
+            } else {
+              setErrorMsg('Payment verification failed. Please contact support.');
+            }
+          } catch (err) {
+            setErrorMsg('Network error during verification.');
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: 'Patient Name',
+          email: 'patient@example.com',
+        },
+        theme: {
+          color: '#c8f542',
+        },
+        modal: {
+          ondismiss: function() {
+            setIsProcessing(false);
+            setErrorMsg('Payment cancelled.');
+          }
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      
+      paymentObject.on('payment.failed', function (response: any) {
+        setErrorMsg(`Payment Failed: ${response.error.description}`);
+        setIsProcessing(false);
+      });
+
+      paymentObject.open();
+
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg(error.message || 'Checkout failed to initialize.');
+      setIsProcessing(false);
+    }
+  };
+
+  const currentPlan = plans[selectedPlan];
+  const finalPrice = Math.round(currentPlan.price * (1 - discountPercent));
 
   return (
-    <div className="w-full max-w-4xl mx-auto py-6 animate-in fade-in duration-300 font-geist">
-      <div className="liquid-glass-card p-8 sm:p-10 rounded-[28px] relative shadow-2xl">
-        {!showCheckout ? (
-          <>
-            {/* Step 1: Select Plan */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <span className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[10px] font-semibold text-[#c8f542] uppercase tracking-wider mb-2" style={{ border: '1px solid rgba(200,245,66,0.35)', background: 'rgba(200,245,66,0.06)' }}>
-                  SUBSCRIPTION SELECTION
-                </span>
-                <h3 className="font-semibold text-3xl text-white">Choose Your Access Tier</h3>
-              </div>
+    <div className="w-full max-w-4xl mx-auto py-6 animate-in fade-in duration-300 font-geist relative">
+      <div className="bg-[#0a2a12] border border-[#1d4a25] p-8 sm:p-10 rounded-[28px] relative shadow-2xl overflow-hidden">
+        
+        {/* NEW: Custom Floating Success Toast Popup */}
+        {successMsg && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+            <div className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-[#c8f542]/20 border border-[#c8f542]/40 shadow-[0_4px_24px_rgba(200,245,66,0.2)] backdrop-blur-md">
+              <iconify-icon icon="solar:check-circle-bold" width="18" style={{ color: '#c8f542' }}></iconify-icon>
+              <span className="text-xs font-semibold text-white tracking-wide">{successMsg}</span>
             </div>
-
-            <p className="font-inter text-xs text-white/70 mb-8 leading-relaxed max-w-2xl">
-              Unlock unlimited AI skin health scans, priority vision telemetry, and encrypted recovery archives. Select a plan below for instant checkout.
-            </p>
-
-            {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 pt-3">
-              
-              {/* Day Pass */}
-              <div 
-                onClick={() => setSelectedPlan('day')}
-                className={`p-6 rounded-2xl transition-all cursor-pointer flex flex-col justify-between ${
-                  selectedPlan === 'day' ? 'liquid-glass-card-lime shadow-xl' : 'liquid-glass-card hover:border-white/30'
-                }`}
-              >
-                <div>
-                  <h4 className="font-semibold text-lg text-white mb-1">Day Pass</h4>
-                  <p className="text-2xl font-bold text-[#c8f542] mb-4">$2.99 <span className="text-xs font-normal text-white/50">/ 24h</span></p>
-                  <ul className="space-y-2 font-inter text-xs text-white/70">
-                    <li>✓ 50 High-Res Scans</li>
-                    <li>✓ Basic Care Reports</li>
-                    <li>✓ 24-Hour Access</li>
-                  </ul>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => { setSelectedPlan('day'); setShowCheckout(true); }}
-                  className="w-full mt-6 py-2.5 rounded-full text-xs font-semibold text-white border border-white/20 hover:bg-white/10 transition-colors"
-                >
-                  Select Day Pass
-                </button>
-              </div>
-
-              {/* Pro Monthly */}
-              <div 
-                onClick={() => setSelectedPlan('pro')}
-                className={`p-6 rounded-2xl transition-all cursor-pointer flex flex-col justify-between relative ${
-                  selectedPlan === 'pro' ? 'liquid-glass-card-lime shadow-2xl scale-[1.02]' : 'liquid-glass-card hover:border-white/30'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="font-semibold text-lg text-white">Pro Monthly</h4>
-                  <span className="rounded-full px-2.5 py-0.5 text-[9px] font-bold text-[#12300f] uppercase" style={{ backgroundColor: '#c8f542' }}>
-                    MOST POPULAR
-                  </span>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#c8f542] mb-4">$19.99 <span className="text-xs font-normal text-white/50">/ mo</span></p>
-                  <ul className="space-y-2 font-inter text-xs text-white/80">
-                    <li>✓ Unlimited Daily Scans</li>
-                    <li>✓ Priority Groq Vision Engine</li>
-                    <li>✓ Progression Archives</li>
-                  </ul>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => { setSelectedPlan('pro'); setShowCheckout(true); }}
-                  className="w-full mt-6 py-3 rounded-full text-xs font-semibold text-[#12300f] uppercase transition-transform hover:scale-105"
-                  style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
-                >
-                  Checkout Pro
-                </button>
-              </div>
-
-              {/* Clinical Lifetime */}
-              <div 
-                onClick={() => setSelectedPlan('lifetime')}
-                className={`p-6 rounded-2xl transition-all cursor-pointer flex flex-col justify-between ${
-                  selectedPlan === 'lifetime' ? 'liquid-glass-card-lime shadow-xl' : 'liquid-glass-card hover:border-white/30'
-                }`}
-              >
-                <div>
-                  <h4 className="font-semibold text-lg text-white mb-1">Lifetime</h4>
-                  <p className="text-2xl font-bold text-[#c8f542] mb-4">$99.00 <span className="text-xs font-normal text-white/50">one-time</span></p>
-                  <ul className="space-y-2 font-inter text-xs text-white/70">
-                    <li>✓ Unlimited Lifetime Scans</li>
-                    <li>✓ Full Telemetry Exports</li>
-                    <li>✓ All Future Updates</li>
-                  </ul>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => { setSelectedPlan('lifetime'); setShowCheckout(true); }}
-                  className="w-full mt-6 py-2.5 rounded-full text-xs font-semibold text-white border border-white/20 hover:bg-white/10 transition-colors"
-                >
-                  Select Lifetime
-                </button>
-              </div>
-
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Step 2: Authentic Checkout Form */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setShowCheckout(false)}
-                  className="text-white/60 hover:text-white font-bold text-xs uppercase flex items-center gap-1"
-                >
-                  &larr; Back
-                </button>
-                <h3 className="font-semibold text-xl text-white">Checkout • {plans[selectedPlan].name}</h3>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 mb-6 flex justify-between items-center text-xs">
-              <div>
-                <p className="text-white font-semibold">{plans[selectedPlan].name}</p>
-                <p className="text-white/50">{plans[selectedPlan].details}</p>
-              </div>
-              <p className="text-xl font-bold text-[#c8f542]">{plans[selectedPlan].price}</p>
-            </div>
-
-            {/* Payment Method Tabs */}
-            <div className="grid grid-cols-3 gap-2 mb-6 text-xs">
-              <button 
-                type="button"
-                onClick={() => setPaymentMethod('card')}
-                className={`py-2.5 rounded-xl border flex items-center justify-center gap-2 ${
-                  paymentMethod === 'card' ? 'bg-[#c8f542] text-[#12300f] font-semibold border-[#c8f542]' : 'bg-white/5 text-white/70 border-white/10'
-                }`}
-              >
-                <iconify-icon icon="solar:card-linear" width="16"></iconify-icon>
-                <span>Card</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => setPaymentMethod('apple')}
-                className={`py-2.5 rounded-xl border flex items-center justify-center gap-2 ${
-                  paymentMethod === 'apple' ? 'bg-[#c8f542] text-[#12300f] font-semibold border-[#c8f542]' : 'bg-white/5 text-white/70 border-white/10'
-                }`}
-              >
-                <iconify-icon icon="solar:apple-bold" width="16"></iconify-icon>
-                <span>Apple Pay</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => setPaymentMethod('upi')}
-                className={`py-2.5 rounded-xl border flex items-center justify-center gap-2 ${
-                  paymentMethod === 'upi' ? 'bg-[#c8f542] text-[#12300f] font-semibold border-[#c8f542]' : 'bg-white/5 text-white/70 border-white/10'
-                }`}
-              >
-                <iconify-icon icon="solar:bolt-linear" width="16"></iconify-icon>
-                <span>UPI / Net</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleCheckoutSubmit} className="space-y-4 font-inter text-xs">
-              <div>
-                <label className="block text-white/70 font-medium mb-1 font-geist">Cardholder Name</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe" 
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#c8f542]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-white/70 font-medium mb-1 font-geist">Card Number</label>
-                <input 
-                  type="text" 
-                  required 
-                  maxLength={19}
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="4532 •••• •••• 8921" 
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#c8f542]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white/70 font-medium mb-1 font-geist">Expiry Date</label>
-                  <input 
-                    type="text" 
-                    required 
-                    maxLength={5}
-                    value={expiry}
-                    onChange={(e) => setExpiry(e.target.value)}
-                    placeholder="MM/YY" 
-                    className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#c8f542]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 font-medium mb-1 font-geist">CVC / CVV</label>
-                  <input 
-                    type="password" 
-                    required 
-                    maxLength={4}
-                    value={cvc}
-                    onChange={(e) => setCvc(e.target.value)}
-                    placeholder="•••" 
-                    className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#c8f542]"
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
-                disabled={isProcessing}
-                className="w-full py-4 rounded-full font-geist font-semibold text-[#12300f] uppercase tracking-wider text-xs mt-6 flex items-center justify-center gap-2"
-                style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-[#12300f] border-t-transparent rounded-full animate-spin" />
-                    <span>Processing Payment...</span>
-                  </div>
-                ) : (
-                  <span>Pay {plans[selectedPlan].price} & Activate Plan</span>
-                )}
-              </button>
-            </form>
-          </>
+          </div>
         )}
+
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[10px] font-semibold text-[#c8f542] uppercase tracking-wider mb-2" style={{ border: '1px solid rgba(200,245,66,0.35)', background: 'rgba(200,245,66,0.06)' }}>
+              SUBSCRIPTION SELECTION
+            </span>
+            <h3 className="font-semibold text-3xl text-white">Choose Your Access Tier</h3>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all">&times;</button>
+        </div>
+
+        {errorMsg && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center animate-in fade-in">
+            {errorMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 pt-3">
+          {Object.values(plans).map((plan) => (
+            <div 
+              key={plan.id}
+              onClick={() => setSelectedPlan(plan.id as any)}
+              className={`p-6 rounded-2xl transition-all cursor-pointer flex flex-col justify-between ${
+                selectedPlan === plan.id ? 'bg-[#c8f542]/10 border-2 border-[#c8f542] shadow-xl scale-[1.02]' : 'bg-white/5 border border-white/10 hover:border-white/30'
+              }`}
+            >
+              <div>
+                <h4 className="font-semibold text-lg text-white mb-1">{plan.name}</h4>
+                <p className="text-2xl font-bold text-[#c8f542] mb-4">₹{plan.price} <span className="text-[10px] font-normal text-white/50">{plan.period}</span></p>
+                <ul className="space-y-2 font-inter text-xs text-white/70">
+                  <li className="text-white font-medium">✓ {plan.details}</li>
+                  <li>✓ Clinical AI Accuracy</li>
+                  <li>✓ Priority Engine Queue</li>
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="max-w-md mx-auto bg-black/40 p-6 rounded-2xl border border-white/10 relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <input 
+              type="text" 
+              placeholder="ENTER A VALID COUPON CODE HERE" 
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value)}
+              className="flex-1 p-3 rounded-xl bg-white/5 border border-white/10 text-white text-xs outline-none focus:border-[#c8f542] uppercase transition-colors"
+            />
+            <button onClick={applyCoupon} className="px-5 py-3 rounded-xl bg-white/10 text-white font-semibold text-xs hover:bg-white/20 transition-all">Apply</button>
+          </div>
+
+          <div className="flex justify-between items-center text-sm font-semibold text-white mb-6 pt-4 border-t border-white/10">
+            <span>Total Payable:</span>
+            <span className="text-xl text-[#c8f542] transition-all">₹{finalPrice}</span>
+          </div>
+
+          <button 
+            onClick={handleRazorpayCheckout}
+            disabled={isProcessing}
+            className="w-full py-4 rounded-full font-bold text-[#12300f] uppercase tracking-wider text-xs transition-transform hover:scale-[1.02] flex items-center justify-center gap-2"
+            style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
+          >
+            {isProcessing 
+              ? (finalPrice === 0 ? 'Activating Premium Access...' : 'Connecting to Razorpay...') 
+              : `Pay ₹${finalPrice} Securely`
+            }
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derma Assist AI — Project Abstract & Technical Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&display=swap');
+
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #1a202c;
+      line-height: 1.6;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
+    }
+
+    .no-print-bar {
+      background: #0a2a12;
+      color: #ffffff;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .print-btn {
+      background-color: #c8f542;
+      color: #12300f;
+      border: none;
+      padding: 10px 20px;
+      font-family: 'Geist', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(200, 245, 66, 0.4);
+    }
+
+    .print-btn:hover {
+      transform: scale(1.04);
+      background-color: #b5e330;
+    }
+
+    .page-container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: #ffffff;
+      padding: 50px 60px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e2e8f0;
+    }
+
+    h1 {
+      font-family: 'Geist', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #0d3617;
+      margin-top: 0;
+      margin-bottom: 6px;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #ecfdf5;
+    }
+
+    .authors-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 12px;
+      color: #14532d;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-family: 'Geist', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 28px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #e2e8f0;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    p {
+      font-size: 13px;
+      color: #334155;
+      margin-bottom: 16px;
+      text-align: justify;
+    }
+
+    ul {
+      margin-top: 6px;
+      margin-bottom: 16px;
+      padding-left: 20px;
+    }
+
+    li {
+      font-size: 13px;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .highlight-box {
+      background-color: #f8fafc;
+      border-left: 4px solid #10b981;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0;
+      font-size: 13px;
+    }
+
+    .footer-note {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 11px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    @media print {
+      .no-print-bar {
+        display: none !important;
+      }
+      body {
+        background-color: #ffffff;
+      }
+      .page-container {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Top Action Bar for PDF Generation -->
+  <div class="no-print-bar">
+    <div style="font-family: 'Geist', sans-serif; font-size: 14px; font-weight: 600;">
+      📄 Derma Assist AI — Academic Document Ready
+    </div>
+    <button onclick="window.print()" class="print-btn">
+      🖨️ Click to Save as PDF
+    </button>
+  </div>
+
+  <div class="page-container">
+    <h1>Derma Assist AI – A Smart Dermatological Tracking & Analysis Web Application</h1>
+    <div class="subtitle">Version Release 2.4.0 — Production Technical Abstract & Project Overview</div>
+
+    <div class="authors-box">
+      <strong>Development Team:</strong> Sabarinath (Developer Lead), Sanjay Krishnan (AI Engineer), Sreyas (Data Analyst), Vinush (Testing & Finance)
+    </div>
+
+    <h2>Abstract</h2>
+    <p>
+      <strong>Derma Assist AI</strong> is a responsive, mobile-first dermatological web application designed to deliver real-time, AI-assisted educational insights into skin health using state-of-the-art multimodal vision and conversational artificial intelligence. The system leverages the <strong>Groq Multimodal AI Vision Engine</strong> running <code>qwen/qwen3.6-27b</code> to perform deep feature analysis on user-uploaded skin imagery. Positioned as an advanced skin-pattern awareness, live clinical consultation, and longitudinal tracking platform, Derma Assist AI enables users to monitor visible skin changes over time with high confidence while prioritizing data privacy through a <strong>client-side AES-256 encrypted local storage architecture</strong>, strict zero-fallback error guards against false-positive diagnoses, and mandatory authentication security controls.
+    </p>
+
+    <h2>Project Overview & Core Functionality</h2>
+    <p>The application provides four primary capabilities:</p>
+    <ul>
+      <li><strong>Instant Groq AI Vision Telemetry:</strong> Users capture or upload skin photos (compressed client-side to &lt;800px for mobile performance). The vision engine validates the image structure and generates structured clinical indicators including primary condition identification, severity level (<em>Mild, Moderate, Severe</em>), confidence scores, observed visual indicators, symptoms, precautions, and actionable step-by-step care plans.</li>
+      <li><strong>Live AI Dermatological Assistant:</strong> An interactive, real-time conversational assistant powered by Groq LLM API with condition-specific context binding, streaming typing indicator animations (• • •), and quick-select clinical suggestion pills.</li>
+      <li><strong>Encrypted Patient Health Profile:</strong> A comprehensive patient health record module allowing users to record and store encrypted health metrics including Age, Gender, Height, Weight, Skin Type (<em>Normal, Dry, Oily, Combination, Sensitive</em>), Sun Exposure Level, Primary Dermatological Concern, Active Skincare Routine, Known Allergies/Sensitivities, and Emergency Contact details.</li>
+      <li><strong>Longitudinal Progression Mapping:</strong> A comparative analytics engine that evaluates visual changes between historical scan checkpoints to track recovery trajectory over time.</li>
+    </ul>
+
+    <h2>Technical Architecture & Analysis Workflow</h2>
+    <p>
+      Derma Assist AI is built using <strong>React 18</strong>, <strong>TypeScript</strong>, and the <strong>Vite</strong> build engine, enabling high-performance, single-page application execution. To guarantee stability across desktop and mobile browsers—including iOS Safari—uploaded images undergo client-side HTML5 Canvas compression to a maximum dimension of 800 pixels before transmission.
+    </p>
+    <p>The AI analysis pipeline follows a strict, multi-stage execution workflow:</p>
+    <ul>
+      <li><strong>Mandatory Authentication Guard:</strong> Unauthenticated users requesting a scan are redirected to the secure login/sign-up portal.</li>
+      <li><strong>Quota Management Engine:</strong> Enforces a 15-scan daily quota limit for free-tier users, updating dynamically via an interactive hero slider, with native routing to subscription tiers.</li>
+      <li><strong>Multimodal AI Vision Stream:</strong> The compressed base64 image string is dispatched to the Groq Qwen Vision API using structured JSON schema constraints (<code>response_format: { type: 'json_object' }</code>).</li>
+      <li><strong>Zero-Fallback Exception Guard:</strong> Robust error handling ensures that if an API transport failure, invalid image input, or timeout occurs, the system gracefully alerts the user instead of presenting false/dummy medical reports.</li>
+    </ul>
+
+    <h2>Progression Mapping & Longitudinal Tracking</h2>
+    <p>
+      A key distinguishing feature of the platform is its <strong>Progression Mapping</strong> module, which enables comparative analysis between two historical scan entries—a baseline checkpoint and a current follow-up scan. The AI algorithm (<code>compareProgression</code>) evaluates visual variations across color saturation, lesion boundary stability, surface hydration, and spatial distribution patterns to determine a clinical progression verdict: <strong>Improved</strong>, <strong>Unchanged</strong>, or <strong>Requires Medical Attention</strong>. The analysis includes a detailed breakdown of observable visual shifts and tailored clinical next-step recommendations to guide the user responsibly.
+    </p>
+
+    <h2>User Interface Design & Safety Mechanisms</h2>
+    <p>
+      The user interface adopts a premium <strong>Liquid Glass Dynamic Effect</strong> design system implemented using Tailwind CSS and custom backdrop filters (<code>backdrop-filter: blur(20px)</code> with dynamic diagonal light sheen). The interface features:
+    </p>
+    <ul>
+      <li><strong>Mobile Responsive Drawer:</strong> A dedicated mobile hamburger menu drawer providing full navigation access (<em>Home, Progression Mapping, Scan History, AI Assistant, Subscription, About Developers</em>) on touch devices.</li>
+      <li><strong>Client-Side Encrypted Storage:</strong> All scan archives and patient health profiles are encrypted using AES-256 client-side protocols and stored locally in <code>LocalStorage</code>, ensuring zero third-party cloud exposure of patient photos.</li>
+      <li><strong>Safety Safeguards:</strong> Strict medical disclaimers, zero-fallback error guards, and explicit patient privacy indicators reinforce responsible healthcare awareness and prevent misuse.</li>
+    </ul>
+
+    <h2>Key Technical & Functional Specifications</h2>
+    <ul>
+      <li><strong>Core Technologies:</strong> React 18, TypeScript, Vite, Tailwind CSS, Iconify.</li>
+      <li><strong>AI Vision Engine:</strong> Groq Multimodal AI Vision Engine running <code>qwen/qwen3.6-27b</code> with structured JSON schema enforcement.</li>
+      <li><strong>Conversational AI:</strong> Groq LLM Assistant with real-time context injection and streaming state animation.</li>
+      <li><strong>Security & Privacy:</strong> Client-side AES-256 encrypted local storage, mandatory sign-in scan gate, zero external image retention.</li>
+      <li><strong>Performance & Data Handling:</strong> Client-side canvas image compression (&lt;800px), 15-scan/day quota manager with interactive slider state.</li>
+      <li><strong>User Experience:</strong> Liquid Glass Dynamic Effect design, animated GSAP transitions, responsive mobile menu drawer, patient health profile telemetry.</li>
+      <li><strong>Safety Mechanisms:</strong> Zero-fallback error guards, API timeout protection, and explicit clinical educational disclaimers.</li>
+    </ul>
+
+    <h2>Conclusion</h2>
+    <p>
+      Derma Assist AI demonstrates how modern web technologies, client-side encryption, and multimodal computer vision can be integrated into a responsible, user-centric dermatological awareness platform. By combining high-accuracy AI pattern analysis, an interactive live assistant, longitudinal progression tracking, and an ultra-premium Liquid Glass interface, the application empowers users to understand and monitor visible skin health over time while consistently emphasizing the necessity of professional medical consultation for definitive clinical diagnosis.
+    </p>
+
+    <div class="footer-note">
+      © 2026 Derma Assist AI Research Labs. Confidential Academic Submission Document.
+    </div>
+  </div>
+
+</body>
+</html>

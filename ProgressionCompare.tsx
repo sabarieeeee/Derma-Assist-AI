@@ -1,30 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { TimelineEntry, ComparisonResult } from './types';
-import { compareProgression } from './geminiService'; 
 
 interface ProgressionCompareProps {
   entries: TimelineEntry[];
+  onStartNewScan?: () => void;
 }
 
-const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
+const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries, onStartNewScan }) => {
   const [idx1, setIdx1] = useState(0);
   const [idx2, setIdx2] = useState(entries.length - 1);
   const [report, setReport] = useState<ComparisonResult | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handleCompare = async () => {
-    if (idx1 === idx2) return;
-    setLoading(true);
-    setReport(null);
-    try {
-      const result = await compareProgression(entries[idx1].imageData, entries[idx2].imageData);
-      setReport(result);
-    } catch (e) {
-      alert("Comparison failed");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (entries.length >= 2) {
@@ -33,7 +19,77 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
     }
   }, [entries]);
 
-  if (entries.length < 2) return null;
+  const handleCompare = async () => {
+    if (idx1 === idx2) return;
+    setLoading(true);
+    setReport(null);
+    
+    try {
+      const apiKey = import.meta.env.VITE_GROQ_API_KEY || '';
+      if (!apiKey) throw new Error("Missing API Key");
+
+      // Strict Qwen Integration for Comparison
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'qwen-2.5-32b',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a clinical progression analyzer. Compare the two provided dermatological descriptions/contexts and return a strict JSON output matching this structure: {"verdict": "IMPROVED" | "WORSENED" | "STABLE" | "MISMATCH", "changes": ["change 1", "change 2"], "recommendation": "your recommendation"}'
+            },
+            {
+              role: 'user',
+              content: `Baseline Scan Diagnosis: ${entries[idx1].label}. Current Scan Diagnosis: ${entries[idx2].label}. Analyze the progression between these two states.`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) throw new Error("API Request Failed");
+      
+      const data = await response.json();
+      const parsedResult = JSON.parse(data.choices[0].message.content);
+      
+      setReport({
+        verdict: parsedResult.verdict || 'STABLE',
+        changes: parsedResult.changes || ['No significant visual differences detected.'],
+        recommendation: parsedResult.recommendation || 'Continue current maintenance routine.'
+      });
+      
+    } catch (e) {
+      console.error(e);
+      alert("Comparison failed. Ensure your Groq API key is valid and has sufficient quota.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // EMPTY STATE UI
+  if (entries.length < 2) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center coincompass-glass-card rounded-3xl border border-white/10 shadow-2xl bg-black/20">
+         <iconify-icon icon="solar:scanner-linear" width="48" style={{ color: '#c8f542', marginBottom: '16px' }}></iconify-icon>
+         <h3 className="font-geist text-xl font-semibold text-white mb-2">Scan to Compare</h3>
+         <p className="font-inter text-sm text-white/50 max-w-md mb-6">You need at least two saved scans in your archive to benchmark progression and generate an AI clinical comparison report.</p>
+         {onStartNewScan && (
+           <button 
+             onClick={onStartNewScan} 
+             className="rounded-full px-6 py-3 text-xs font-semibold text-[#12300f] uppercase tracking-wider transition-all hover:scale-105"
+             style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
+           >
+             Capture New Scan
+           </button>
+         )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -84,13 +140,13 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
       <button 
         onClick={handleCompare}
         disabled={loading || idx1 === idx2}
-        className={`w-full py-4 coincompass-action-btn uppercase tracking-wider text-xs flex items-center justify-center gap-3 ${
+        className={`w-full py-4 coincompass-action-btn uppercase tracking-wider text-xs flex items-center justify-center gap-3 bg-white/10 text-white rounded-full font-geist font-semibold border border-white/20 hover:bg-white/20 transition-all ${
           loading ? 'opacity-70 cursor-not-allowed' : ''
         }`}
       >
         {loading ? (
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 border-2 border-[#12300f] border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             <span>Benchmarking Progression...</span>
           </div>
         ) : (
@@ -100,7 +156,7 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
 
       {/* Comparison Report Box */}
       {report && (
-        <div className="coincompass-glass-card p-8 sm:p-10 rounded-[28px] relative overflow-hidden animate-in fade-in duration-500">
+        <div className="coincompass-glass-card p-8 sm:p-10 rounded-[28px] relative overflow-hidden animate-in fade-in duration-500 bg-white/5 border border-white/10">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <span className="font-geist text-[11px] font-medium tracking-widest text-white/60 uppercase block mb-1">
@@ -110,7 +166,7 @@ const ProgressionCompare: React.FC<ProgressionCompareProps> = ({ entries }) => {
                 {report.verdict === 'MISMATCH' ? 'Non-Comparable Patterns' : report.verdict}
               </h4>
             </div>
-            <span className="coincompass-tag-badge px-4 py-1.5 font-semibold text-xs uppercase">
+            <span className="px-4 py-1.5 font-semibold text-xs uppercase bg-[#c8f542] text-[#12300f] rounded-full tracking-widest">
               {report.verdict}
             </span>
           </div>

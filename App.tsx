@@ -27,15 +27,17 @@ export default function App() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // User Authentication & Profile States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
 
-  // Daily Scan Quota Logic (15 Scans / Day)
-  const [scanCount, setScanCount] = useState<number>(0);
-  const [quotaLimit] = useState<number>(15);
+  // Daily Scan Quota Logic (10 Free Daily + Paid Top-ups)
+  const [dailyScanCount, setDailyScanCount] = useState<number>(0);
+  const [paidScansRemaining, setPaidScansRemaining] = useState<number>(0);
+  const quotaLimit = 10; 
 
   const [showIntro, setShowIntro] = useState(true);
   const [introFade, setIntroFade] = useState(false);
@@ -45,20 +47,21 @@ export default function App() {
   const ethBarsRef = useRef<HTMLDivElement>(null);
   const howItWorksRef = useRef<HTMLDivElement>(null);
 
-  // Splash Screen timer
   useEffect(() => {
     const timer1 = setTimeout(() => setIntroFade(true), 2000); 
     const timer2 = setTimeout(() => setShowIntro(false), 2600); 
-    return () => { clearTimeout(timer1); clearTimeout(timer2); };
+    return () => { 
+      clearTimeout(timer1); 
+      clearTimeout(timer2); 
+    };
   }, []);
 
-  // Initialize Lenis, GSAP, ETH Bars, Floating Cards
   useEffect(() => {
     if (typeof Lenis !== 'undefined') {
       const lenis = new Lenis({ lerp: 0.1, smoothWheel: true });
-      function raf(time: number) {
-        lenis.raf(time);
-        requestAnimationFrame(raf);
+      function raf(time: number) { 
+        lenis.raf(time); 
+        requestAnimationFrame(raf); 
       }
       requestAnimationFrame(raf);
       if (typeof ScrollTrigger !== 'undefined') {
@@ -76,7 +79,11 @@ export default function App() {
         b.style.height = h + '%';
         ethBarsRef.current?.appendChild(b);
         b.animate(
-          [{ height: h + '%' }, { height: Math.min(100, h + 14) + '%' }, { height: h + '%' }],
+          [
+            { height: h + '%' }, 
+            { height: Math.min(100, h + 14) + '%' }, 
+            { height: h + '%' }
+          ],
           { duration: 1800 + i * 140, iterations: Infinity, easing: 'ease-in-out', delay: i * 120 }
         );
       });
@@ -85,40 +92,46 @@ export default function App() {
     document.querySelectorAll('[data-float]').forEach(function(el) {
       const i = parseInt(el.getAttribute('data-float') || '1', 10);
       el.animate(
-        [{ transform: 'translateY(0px)' }, { transform: 'translateY(-' + (6 + (i % 3) * 3) + 'px)' }, { transform: 'translateY(0px)' }],
+        [
+          { transform: 'translateY(0px)' }, 
+          { transform: 'translateY(-' + (6 + (i % 3) * 3) + 'px)' }, 
+          { transform: 'translateY(0px)' }
+        ],
         { duration: 4200 + i * 600, iterations: Infinity, easing: 'ease-in-out', delay: i * 350 }
       );
     });
 
     if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
       gsap.registerPlugin(ScrollTrigger);
-
       const mainEl = document.querySelector('main');
-
-      gsap.to('#glCanvas', {
-        yPercent: 22, ease: 'none',
-        scrollTrigger: { trigger: mainEl, start: 'top top', end: 'bottom top', scrub: 0.6 }
-      });
-
-      gsap.fromTo('header', { opacity: 0, y: -18, filter: 'blur(8px)' },
-        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.1, ease: 'power3.out', delay: 0.15 });
-
+      if (mainEl) {
+        gsap.to('#glCanvas', { 
+          yPercent: 22, 
+          ease: 'none', 
+          scrollTrigger: { trigger: mainEl, start: 'top top', end: 'bottom top', scrub: 0.6 } 
+        });
+      }
+      gsap.fromTo('header', 
+        { opacity: 0, y: -18, filter: 'blur(8px)' }, 
+        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.1, ease: 'power3.out', delay: 0.15 }
+      );
       document.querySelectorAll('[data-fade]').forEach(function(el) {
-        gsap.fromTo(el, { opacity: 0, y: 30, filter: 'blur(7px)' },
-          { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1, ease: 'power3.out',
-            scrollTrigger: { trigger: el, start: 'top 90%', once: true } });
+        gsap.fromTo(el, 
+          { opacity: 0, y: 30, filter: 'blur(7px)' }, 
+          { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 90%', once: true } }
+        );
       });
-
       document.querySelectorAll('[data-stagger]').forEach(function(group) {
-        gsap.fromTo(group.children, { opacity: 0, y: 34, scale: 0.94, filter: 'blur(9px)' },
-          { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.9, ease: 'power3.out', stagger: 0.09,
-            scrollTrigger: { trigger: group, start: 'top 88%', once: true } });
+        gsap.fromTo(group.children, 
+          { opacity: 0, y: 34, scale: 0.94, filter: 'blur(9px)' }, 
+          { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.9, ease: 'power3.out', stagger: 0.09, scrollTrigger: { trigger: group, start: 'top 88%', once: true } }
+        );
       });
     }
   }, [currentScreen]);
 
-  // Load user, history & quota
   useEffect(() => {
+    let currentEmail = '';
     const savedUser = localStorage.getItem('derm_user');
     if (savedUser) {
       try {
@@ -126,6 +139,7 @@ export default function App() {
         if (parsed.isLoggedIn) {
           setIsLoggedIn(true);
           setUserEmail(parsed.email);
+          currentEmail = parsed.email;
           setUserName(parsed.name || parsed.email.split('@')[0]);
         }
       } catch (e) {}
@@ -133,42 +147,74 @@ export default function App() {
 
     const storedProfile = localStorage.getItem('derm_patient_profile');
     if (storedProfile) {
-      try {
-        const parsedProf = JSON.parse(storedProfile);
-        if (parsedProf.name) setUserName(parsedProf.name);
+      try { 
+        const parsedProf = JSON.parse(storedProfile); 
+        if (parsedProf.name) setUserName(parsedProf.name); 
       } catch (e) {}
     }
 
-    const saved = localStorage.getItem('derm_history');
-    if (saved) try { setEntries(JSON.parse(saved)); } catch (e) {}
+    if (currentEmail) {
+      const userHistoryKey = `derm_history_${currentEmail}`;
+      const savedAccHistory = localStorage.getItem(userHistoryKey);
+      if (savedAccHistory) {
+        try { 
+          setEntries(JSON.parse(savedAccHistory)); 
+        } catch (e) { 
+          setEntries([]); 
+        }
+      } else {
+        const legacySaved = localStorage.getItem('derm_history');
+        if (legacySaved) {
+          try {
+            const parsedLegacy = JSON.parse(legacySaved);
+            setEntries(parsedLegacy);
+            localStorage.setItem(userHistoryKey, JSON.stringify(parsedLegacy));
+          } catch (e) { 
+            setEntries([]); 
+          }
+        } else {
+          setEntries([]);
+        }
+      }
+    } else {
+      setEntries([]);
+    }
 
     const today = new Date().toDateString();
-    const storedQuota = localStorage.getItem('derm_scan_quota');
-    if (storedQuota) {
+    
+    // Init Daily Free Quota
+    const storedDaily = localStorage.getItem('derm_daily_quota');
+    if (storedDaily) {
       try {
-        const parsed = JSON.parse(storedQuota);
+        const parsed = JSON.parse(storedDaily);
         if (parsed.date === today) {
-          setScanCount(parsed.count || 0);
+          setDailyScanCount(parsed.count);
         } else {
-          localStorage.setItem('derm_scan_quota', JSON.stringify({ date: today, count: 0 }));
-          setScanCount(0);
+          setDailyScanCount(0);
+          localStorage.setItem('derm_daily_quota', JSON.stringify({ date: today, count: 0 }));
         }
       } catch (e) {}
+    } else {
+        localStorage.setItem('derm_daily_quota', JSON.stringify({ date: today, count: 0 }));
     }
+
+    // Init Paid Quota Buffer
+    const storedPaid = localStorage.getItem('derm_paid_scans');
+    if (storedPaid) {
+      setPaidScansRemaining(Number(storedPaid));
+    } else {
+      localStorage.setItem('derm_paid_scans', '0');
+    }
+
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('derm_history', JSON.stringify(entries));
-    } catch (e) {}
-  }, [entries]);
-
-  const updateScanQuota = () => {
-    const today = new Date().toDateString();
-    const newCount = scanCount + 1;
-    setScanCount(newCount);
-    localStorage.setItem('derm_scan_quota', JSON.stringify({ date: today, count: newCount }));
-  };
+    if (isLoggedIn && userEmail) {
+      try { 
+        localStorage.setItem(`derm_history_${userEmail}`, JSON.stringify(entries)); 
+      } catch (e) {}
+    }
+  }, [entries, isLoggedIn, userEmail]);
 
   const checkQuotaAndOpenUpload = () => {
     if (!isLoggedIn) {
@@ -176,30 +222,20 @@ export default function App() {
       return;
     }
 
-    const sub = localStorage.getItem('derm_subscription');
-    let isUnlimited = false;
-    if (sub) {
-      try { isUnlimited = JSON.parse(sub).isUnlimited; } catch (e) {}
-    }
-
-    if (!isUnlimited && scanCount >= quotaLimit) {
+    if (dailyScanCount >= quotaLimit && paidScansRemaining <= 0) {
       navigateTo('pricing');
     } else {
       setShowUploadSheet(true);
     }
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const scrollToHowItWorks = () => {
     setShowMobileMenu(false);
     if (currentScreen !== 'home') {
       setCurrentScreen('home');
-      setTimeout(() => {
-        document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-      }, 200);
+      setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 200);
     } else {
       document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
     }
@@ -211,22 +247,41 @@ export default function App() {
     scrollToTop();
   };
 
-  const handleLogout = () => {
+  const executeLogout = () => {
+    if (userEmail) {
+      try { 
+        localStorage.setItem(`derm_history_${userEmail}`, JSON.stringify(entries)); 
+      } catch (e) {}
+    }
     localStorage.removeItem('derm_user');
     setIsLoggedIn(false);
     setUserEmail('');
     setUserName('');
+    setEntries([]);
+    setSelectedImage(null);
+    setAnalysis(null);
     setShowMobileMenu(false);
+    setShowProfileModal(false);
+    setShowLogoutConfirm(false);
   };
 
   const deleteEntry = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEntries(prev => prev.filter(item => item.id !== id));
+    setEntries(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      if (userEmail) {
+        try { 
+          localStorage.setItem(`derm_history_${userEmail}`, JSON.stringify(updated)); 
+        } catch (err) {}
+      }
+      return updated;
+    });
   };
 
   const clearAllHistory = () => {
-    if (confirm("Are you sure you want to clear all scan history?")) {
+    if (window.confirm("Are you sure you want to clear all scan history for your account?")) {
       setEntries([]);
+      if (userEmail) localStorage.removeItem(`derm_history_${userEmail}`);
       localStorage.removeItem('derm_history');
     }
   };
@@ -271,19 +326,9 @@ export default function App() {
   };
 
   const startAnalysis = async () => {
-    if (!selectedImage) {
-      alert("Please select a valid image before running analysis.");
-      navigateTo('home');
-      return;
-    }
+    if (!selectedImage) return;
 
-    const sub = localStorage.getItem('derm_subscription');
-    let isUnlimited = false;
-    if (sub) {
-      try { isUnlimited = JSON.parse(sub).isUnlimited; } catch (e) {}
-    }
-
-    if (!isUnlimited && scanCount >= quotaLimit) {
+    if (dailyScanCount >= quotaLimit && paidScansRemaining <= 0) {
       navigateTo('pricing');
       return;
     }
@@ -293,18 +338,26 @@ export default function App() {
 
     try {
       const result = await analyzeSkinImage(selectedImage);
-      if (!result || !result.diseaseName) {
-        throw new Error("Groq Vision API returned incomplete analysis.");
-      }
+      if (!result || !result.diseaseName) throw new Error("API Error");
 
       setAnalysis(result);
-      updateScanQuota();
+
+      // Deduct Quota Securely
+      if (dailyScanCount < quotaLimit) {
+        const newCount = dailyScanCount + 1;
+        setDailyScanCount(newCount);
+        localStorage.setItem('derm_daily_quota', JSON.stringify({ date: new Date().toDateString(), count: newCount }));
+      } else {
+        const newPaid = paidScansRemaining - 1;
+        setPaidScansRemaining(newPaid);
+        localStorage.setItem('derm_paid_scans', newPaid.toString());
+      }
 
       const newEntry: TimelineEntry = {
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
+        id: crypto.randomUUID(), 
+        timestamp: Date.now(), 
         imageData: selectedImage, 
-        label: result.diseaseName || 'Skin Analysis',
+        label: result.diseaseName, 
         analysis: result
       };
       
@@ -312,8 +365,7 @@ export default function App() {
       setTimeout(() => navigateTo('result'), 1600);
 
     } catch (err: any) {
-      console.error(err);
-      alert(`Skin telemetry error: ${err?.message || "Could not analyze skin pattern with AI. Please check your Groq API key."}`);
+      alert("Analysis Failed. Check API limits.");
       navigateTo('home');
     }
   };
@@ -321,25 +373,26 @@ export default function App() {
   return (
     <div className="p-3 sm:p-6 lg:p-10 min-h-screen">
       
-      {/* Intro Splash Screen Overlay */}
       {showIntro && <SplashScreen fadeOut={introFade} />}
 
-      {/* DERMA ASSIST AI MAIN CANVAS */}
       <main 
         className={`relative w-full rounded-[28px] overflow-hidden flex flex-col justify-between transition-all duration-300 ${
           currentScreen === 'home' ? 'min-h-screen' : 'min-h-[70vh]'
         }`} 
-        style={{ background: 'linear-gradient(160deg,#0a2a12 0%,#0d3617 45%,#0a2a12 100%)', boxShadow: '0 40px 80px -20px rgba(10,42,18,0.45)' }}
+        style={{ 
+          background: 'linear-gradient(160deg,#0a2a12 0%,#0d3617 45%,#0a2a12 100%)', 
+          boxShadow: '0 40px 80px -20px rgba(10,42,18,0.45)' 
+        }}
       >
         
         <div>
-          {/* Radiant Aurora backdrop */}
           <AuroraCanvas />
+          <div 
+            className="absolute inset-0 pointer-events-none" 
+            style={{ backgroundImage: 'repeating-linear-gradient(115deg,rgba(255,255,255,0.025) 0px,rgba(255,255,255,0.025) 1px,transparent 1px,transparent 56px)' }} 
+            aria-hidden="true"
+          ></div>
 
-          {/* Diagonal hatch overlay */}
-          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(115deg,rgba(255,255,255,0.025) 0px,rgba(255,255,255,0.025) 1px,transparent 1px,transparent 56px)' }} aria-hidden="true"></div>
-
-          {/* NAV HEADER */}
           <header className="relative z-20 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 pt-6 lg:pt-7">
             <div onClick={() => navigateTo('home')} className="flex items-center gap-2.5 group cursor-pointer" aria-label="Derma Assist AI home">
               <Logo size={28} />
@@ -348,42 +401,31 @@ export default function App() {
               </span>
             </div>
 
-            {/* Desktop Nav Buttons (Shown on md+ screens) */}
             <nav className="hidden md:flex items-center gap-2" aria-label="Primary">
               <button 
                 onClick={() => navigateTo('home')} 
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${
-                  currentScreen === 'home' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'
-                }`}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${currentScreen === 'home' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'}`} 
                 style={currentScreen !== 'home' ? { border: '1px solid rgba(255,255,255,0.18)' } : {}}
               >
                 <iconify-icon icon="solar:home-2-linear" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
                 Home
               </button>
-
               <button 
                 onClick={() => navigateTo('compare')} 
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${
-                  currentScreen === 'compare' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'
-                }`}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${currentScreen === 'compare' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'}`} 
                 style={currentScreen !== 'compare' ? { border: '1px solid rgba(255,255,255,0.18)' } : {}}
               >
                 <iconify-icon icon="solar:notebook-linear" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
                 Progression
               </button>
-
               <button 
                 onClick={() => navigateTo('history')} 
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${
-                  currentScreen === 'history' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'
-                }`}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${currentScreen === 'history' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'}`} 
                 style={currentScreen !== 'history' ? { border: '1px solid rgba(255,255,255,0.18)' } : {}}
               >
                 <iconify-icon icon="solar:book-bookmark-linear" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
                 History ({entries.length})
               </button>
-
-              {/* AI Assistant Nav Item */}
               <button 
                 onClick={() => setShowChatModal(true)} 
                 className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors duration-150 font-geist" 
@@ -392,36 +434,32 @@ export default function App() {
                 <iconify-icon icon="solar:chat-round-line-linear" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
                 AI Assistant
               </button>
-
-              {/* Subscription Nav Tab */}
               <button 
                 onClick={() => navigateTo('pricing')} 
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${
-                  currentScreen === 'pricing' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'
-                }`}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium font-geist transition-all duration-150 hover:scale-[1.04] ${currentScreen === 'pricing' ? 'bg-white text-[#0d3617]' : 'text-white/80 hover:text-white hover:bg-white/5'}`} 
                 style={currentScreen !== 'pricing' ? { border: '1px solid rgba(255,255,255,0.18)' } : {}}
               >
                 <iconify-icon icon="solar:chart-2-linear" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
                 Subscription
               </button>
-
-              <a 
-                href="#about" 
-                onClick={() => navigateTo('home')}
+              <button 
+                onClick={() => { 
+                  navigateTo('home'); 
+                  setTimeout(() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' }), 100); 
+                }} 
                 className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors duration-150 font-geist" 
                 style={{ border: '1px solid rgba(255,255,255,0.18)' }}
               >
                 <iconify-icon icon="solar:info-circle-linear" width="14" style={{ strokeWidth: 1.5 }}></iconify-icon>
                 About
-              </a>
+              </button>
             </nav>
 
-            {/* Right Header Buttons & Mobile Hamburger Menu Toggle */}
             <div className="flex items-center gap-2 sm:gap-3">
               {isLoggedIn ? (
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <button 
-                    onClick={() => setShowProfileModal(true)}
+                    onClick={() => setShowProfileModal(true)} 
                     className="flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-medium font-geist text-white bg-white/10 hover:bg-white/20 transition-all border border-white/18 shadow-sm"
                   >
                     <span className="w-2.5 h-2.5 rounded-full bg-[#c8f542]" />
@@ -429,7 +467,7 @@ export default function App() {
                     <iconify-icon icon="solar:user-bold" width="12" style={{ color: '#c8f542' }}></iconify-icon>
                   </button>
                   <button 
-                    onClick={handleLogout}
+                    onClick={() => setShowLogoutConfirm(true)} 
                     className="hidden sm:inline-block px-3 py-2 text-xs text-white/50 hover:text-white font-geist transition-colors"
                   >
                     Logout
@@ -446,87 +484,48 @@ export default function App() {
                   <span className="sm:hidden">Sign In</span>
                 </button>
               )}
-
-              {/* Mobile Menu Hamburger Button */}
               <button 
-                onClick={() => setShowMobileMenu(prev => !prev)}
+                onClick={() => setShowMobileMenu(prev => !prev)} 
                 className="md:hidden w-9 h-9 rounded-full bg-white/10 border border-white/18 text-white flex items-center justify-center hover:bg-white/20 transition-all active:scale-95"
-                aria-label="Toggle Navigation Menu"
               >
                 <iconify-icon icon={showMobileMenu ? "solar:close-square-linear" : "solar:hamburger-menu-linear"} width="20"></iconify-icon>
               </button>
             </div>
           </header>
 
-          {/* MOBILE NAVIGATION LIQUID GLASS DRAWER */}
+          {/* MOBILE MENU */}
           {showMobileMenu && (
             <div className="md:hidden relative z-20 px-5 pt-3 pb-4 animate-in slide-in-from-top-3 duration-300 font-geist">
               <div className="liquid-glass-card rounded-2xl p-4 border border-white/20 shadow-2xl space-y-2">
-                <button 
-                  onClick={() => navigateTo('home')} 
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${
-                    currentScreen === 'home' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
-                  }`}
-                >
+                <button onClick={() => navigateTo('home')} className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${currentScreen === 'home' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'}`}>
                   <iconify-icon icon="solar:home-2-linear" width="16"></iconify-icon>
                   <span>Home</span>
                 </button>
-
-                <button 
-                  onClick={() => navigateTo('compare')} 
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${
-                    currentScreen === 'compare' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
-                  }`}
-                >
+                <button onClick={() => navigateTo('compare')} className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${currentScreen === 'compare' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'}`}>
                   <iconify-icon icon="solar:notebook-linear" width="16"></iconify-icon>
                   <span>Progression Mapping</span>
                 </button>
-
-                <button 
-                  onClick={() => navigateTo('history')} 
-                  className={`w-full flex items-center justify-between p-3 rounded-xl text-xs font-medium transition-all ${
-                    currentScreen === 'history' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
-                  }`}
-                >
+                <button onClick={() => navigateTo('history')} className={`w-full flex items-center justify-between p-3 rounded-xl text-xs font-medium transition-all ${currentScreen === 'history' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'}`}>
                   <div className="flex items-center gap-3">
                     <iconify-icon icon="solar:book-bookmark-linear" width="16"></iconify-icon>
                     <span>Scan History</span>
                   </div>
                   <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#c8f542] text-[#12300f] font-bold">{entries.length}</span>
                 </button>
-
-                <button 
-                  onClick={() => { setShowChatModal(true); setShowMobileMenu(false); }} 
-                  className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-[#c8f542] bg-[#c8f542]/10 border border-[#c8f542]/30 transition-all"
-                >
+                <button onClick={() => { setShowChatModal(true); setShowMobileMenu(false); }} className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-[#c8f542] bg-[#c8f542]/10 border border-[#c8f542]/30 transition-all">
                   <iconify-icon icon="solar:chat-round-line-linear" width="16"></iconify-icon>
                   <span>AI Assistant</span>
                 </button>
-
-                <button 
-                  onClick={() => navigateTo('pricing')} 
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${
-                    currentScreen === 'pricing' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'
-                  }`}
-                >
+                <button onClick={() => navigateTo('pricing')} className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium transition-all ${currentScreen === 'pricing' ? 'bg-white text-[#0d3617] font-semibold' : 'text-white/80 hover:bg-white/10'}`}>
                   <iconify-icon icon="solar:chart-2-linear" width="16"></iconify-icon>
                   <span>Subscription</span>
                 </button>
-
-                <a 
-                  href="#about" 
-                  onClick={() => navigateTo('home')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 transition-all"
-                >
+                <a href="#about" onClick={() => navigateTo('home')} className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 transition-all">
                   <iconify-icon icon="solar:info-circle-linear" width="16"></iconify-icon>
                   <span>About Developers</span>
                 </a>
-
                 {isLoggedIn && (
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-red-400 hover:bg-red-500/10 transition-all pt-3 border-t border-white/10"
-                  >
+                  <button onClick={() => { setShowMobileMenu(false); setShowLogoutConfirm(true); }} className="w-full flex items-center gap-3 p-3 rounded-xl text-xs font-medium text-red-400 hover:bg-red-500/10 transition-all pt-3 border-t border-white/10">
                     <iconify-icon icon="solar:logout-2-linear" width="16"></iconify-icon>
                     <span>Sign Out</span>
                   </button>
@@ -535,18 +534,12 @@ export default function App() {
             </div>
           )}
 
-          {/* MAIN BODY VIEWS */}
+          {/* HOME VIEW - FULLY RESTORED */}
           {currentScreen === 'home' && (
             <div>
-              {/* HERO */}
               <section id="hero" className="relative z-10 grid lg:grid-cols-2 gap-10 items-center px-5 sm:px-8 lg:px-12 pt-12 lg:pt-16 pb-8 min-h-[80vh]">
                 <div className="max-w-xl">
-                  {/* How It Works Button Smooth Scrolls */}
-                  <span 
-                    onClick={scrollToHowItWorks}
-                    className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium text-white/90 mb-7 font-geist transition-colors duration-150 hover:bg-[rgba(200,245,66,0.12)] cursor-pointer" 
-                    style={{ border: '1px solid rgba(200,245,66,0.35)', background: 'rgba(200,245,66,0.06)' }}
-                  >
+                  <span onClick={scrollToHowItWorks} className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium text-white/90 mb-7 font-geist transition-colors duration-150 hover:bg-[rgba(200,245,66,0.12)] cursor-pointer" style={{ border: '1px solid rgba(200,245,66,0.35)', background: 'rgba(200,245,66,0.06)' }}>
                     <iconify-icon icon="solar:play-circle-linear" width="15" style={{ strokeWidth: 1.5, color: '#c8f542' }}></iconify-icon>
                     How it works
                   </span>
@@ -559,14 +552,8 @@ export default function App() {
                     Track skin health patterns, learn key indicators and monitor recovery progress with confidence — one clean dashboard built for patients and pros alike.
                   </p>
                   
-                  {/* Hero Only "Scan Now" Button */}
                   <div className="mt-8">
-                    <button 
-                      onClick={checkQuotaAndOpenUpload} 
-                      data-fade="" 
-                      className="inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-medium text-[#12300f] hover:brightness-105 transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] font-geist" 
-                      style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
-                    >
+                    <button onClick={checkQuotaAndOpenUpload} data-fade="" className="inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-medium text-[#12300f] hover:brightness-105 transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] font-geist" style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}>
                       <span className="inline-flex items-center justify-center rounded-full" style={{ width: 18, height: 18, background: 'rgba(18,48,15,0.15)' }}>
                         <iconify-icon icon="solar:arrow-right-up-linear" width="12" style={{ strokeWidth: 1.5 }}></iconify-icon>
                       </span>
@@ -575,20 +562,22 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Right Floating Cards */}
                 <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4 lg:block lg:h-[440px]">
                   
                   {/* Card 1: Daily Quota Interactive Slider */}
                   <div data-float="1" className="rounded-2xl p-4 lg:absolute lg:-top-3 lg:left-2 lg:w-60 liquid-glass-card transition-transform duration-300 hover:!scale-[1.03]">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/75 font-geist">Daily Scans</span>
-                      <span className="text-white font-medium font-geist">{scanCount} / {quotaLimit}</span>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-white/75 font-geist">Free Scans</span>
+                      <span className="text-white font-medium font-geist">{Math.max(0, quotaLimit - dailyScanCount)} / {quotaLimit}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] mb-3">
+                      <span className="text-[#c8f542]/70 font-geist">Paid Buffer</span>
+                      <span className="text-[#c8f542] font-bold font-geist">{paidScansRemaining} remaining</span>
                     </div>
                     <div className="mt-3 relative h-1.5 rounded-full overflow-visible" style={{ background: 'rgba(255,255,255,0.15)' }} role="slider">
-                      <div id="sliderFill" className="absolute left-0 top-0 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(0, (scanCount / quotaLimit) * 100))}%`, backgroundColor: '#c8f542' }}></div>
-                      <div id="sliderKnob" className="absolute top-1/2 -translate-y-1/2 rounded-full transition-all duration-500" style={{ left: `${Math.min(100, Math.max(0, (scanCount / quotaLimit) * 100))}%`, width: 14, height: 14, background: '#fff', border: '3px solid #c8f542', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', marginLeft: -7 }}></div>
+                      <div id="sliderFill" className="absolute left-0 top-0 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(0, (dailyScanCount / quotaLimit) * 100))}%`, backgroundColor: '#c8f542' }}></div>
+                      <div id="sliderKnob" className="absolute top-1/2 -translate-y-1/2 rounded-full transition-all duration-500" style={{ left: `${Math.min(100, Math.max(0, (dailyScanCount / quotaLimit) * 100))}%`, width: 14, height: 14, background: '#fff', border: '3px solid #c8f542', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', marginLeft: -7 }}></div>
                     </div>
-                    <p className="mt-2 text-[10px] text-[#c8f542] text-right font-geist font-medium">15 Free Scans Active</p>
                   </div>
 
                   {/* Card 2: Telemetry Stats */}
@@ -811,55 +800,145 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* 4 Developer Cards */}
                 <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto" data-stagger="">
-                  
-                  {/* Dev 1: Sabarinath */}
                   <div className="rounded-2xl p-6 text-center liquid-glass-card transition-all duration-300 hover:-translate-y-1.5 group">
-                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>
-                      S
-                    </div>
+                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>S</div>
                     <p className="mt-4 text-sm font-semibold text-white font-geist">Sabarinath</p>
                     <p className="text-xs font-geist mt-0.5" style={{ color: '#c8f542' }}>Developer Lead</p>
                     <p className="mt-2 text-xs text-white/50 leading-relaxed font-geist">Front-End & Back-End Lead</p>
                   </div>
 
-                  {/* Dev 2: Sanjay Krishnan */}
                   <div className="rounded-2xl p-6 text-center liquid-glass-card transition-all duration-300 hover:-translate-y-1.5 group">
-                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>
-                      SK
-                    </div>
+                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>SK</div>
                     <p className="mt-4 text-sm font-semibold text-white font-geist">Sanjay Krishnan</p>
                     <p className="text-xs font-geist mt-0.5" style={{ color: '#c8f542' }}>AI Engineer</p>
                     <p className="mt-2 text-xs text-white/50 leading-relaxed font-geist">Vision Model Architect</p>
                   </div>
 
-                  {/* Dev 3: Sreyas */}
                   <div className="rounded-2xl p-6 text-center liquid-glass-card transition-all duration-300 hover:-translate-y-1.5 group">
-                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>
-                      SR
-                    </div>
+                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>SR</div>
                     <p className="mt-4 text-sm font-semibold text-white font-geist">Sreyas</p>
                     <p className="text-xs font-geist mt-0.5" style={{ color: '#c8f542' }}>Data Analyst</p>
                     <p className="mt-2 text-xs text-white/50 leading-relaxed font-geist">Health Telemetry Specialist</p>
                   </div>
 
-                  {/* Dev 4: Vinush */}
                   <div className="rounded-2xl p-6 text-center liquid-glass-card transition-all duration-300 hover:-translate-y-1.5 group">
-                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>
-                      V
-                    </div>
+                    <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center bg-[#c8f542]/20 text-[#c8f542] font-geist font-bold text-2xl group-hover:scale-105 transition-transform" style={{ border: '2px solid rgba(200,245,66,0.4)' }}>V</div>
                     <p className="mt-4 text-sm font-semibold text-white font-geist">Vinush</p>
                     <p className="text-xs font-geist mt-0.5" style={{ color: '#c8f542' }}>Testing & Finance</p>
                     <p className="mt-2 text-xs text-white/50 leading-relaxed font-geist">QA & Subscription Integration</p>
                   </div>
-
                 </div>
               </section>
+
+              {/* BOTTOM CTA CONTAINER */}
+              <section id="cta" className="relative z-10 px-5 sm:px-8 lg:px-12 py-16 lg:py-20">
+                <div className="rounded-[28px] p-8 sm:p-12 lg:p-16 text-center relative overflow-hidden liquid-glass-card-lime">
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%,rgba(200,245,66,0.15) 0%,transparent 60%)' }} aria-hidden="true"></div>
+                  <h2 className="relative text-white text-3xl sm:text-4xl lg:text-5xl font-geist tracking-tighter max-w-2xl mx-auto" style={{ lineHeight: 1.15 }} data-reveal-words="">
+                    Ready to monitor your
+                    <span style={{ color: '#c8f542' }}> skin health</span>
+                    ?
+                  </h2>
+                  <p className="relative mt-5 text-sm text-white/60 leading-relaxed max-w-md mx-auto font-geist" data-fade="">
+                    Join 24,000+ users. Free for your daily tracking — clear visual guidance, no guesswork.
+                  </p>
+                  <div className="relative mt-8 flex flex-col sm:flex-row items-center justify-center gap-3" data-fade="">
+                    <button 
+                      onClick={checkQuotaAndOpenUpload}
+                      className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-[#12300f] hover:brightness-105 transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] font-geist" 
+                      style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
+                    >
+                      <iconify-icon icon="solar:arrow-right-up-linear" width="15" style={{ strokeWidth: 1.5 }}></iconify-icon>
+                      Start Free Scan
+                    </button>
+
+                    <button 
+                      onClick={scrollToTop}
+                      className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white/85 hover:text-white hover:bg-white/5 transition-colors duration-150 font-geist" 
+                      style={{ border: '1px solid rgba(255,255,255,0.18)' }}
+                    >
+                      <iconify-icon icon="solar:play-circle-linear" width="15" style={{ strokeWidth: 1.5 }}></iconify-icon>
+                      Back to Top
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* FOOTER */}
+              <footer className="relative z-10 px-5 sm:px-8 lg:px-12 pt-14 pb-8" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
+                <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-10">
+                  <div className="lg:col-span-2">
+                    <div onClick={() => navigateTo('home')} className="flex items-center gap-2.5 cursor-pointer">
+                      <Logo size={28} />
+                      <span className="text-white font-medium text-base font-geist tracking-tight">
+                        Derma Assist AI
+                      </span>
+                    </div>
+                    <p className="mt-4 text-sm text-white/50 leading-relaxed max-w-xs font-geist">
+                      Your trusted AI dermatological analysis companion. Clarity over hype, since 2026.
+                    </p>
+                    <div className="mt-6 flex items-center gap-2">
+                      <a href="#" aria-label="Follow on X" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
+                        <iconify-icon icon="simple-icons:x" width="13" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
+                      </a>
+                      <a href="#" aria-label="Join Discord" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
+                        <iconify-icon icon="simple-icons:discord" width="14" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
+                      </a>
+                      <a href="#" aria-label="View GitHub" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
+                        <iconify-icon icon="simple-icons:github" width="14" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
+                      </a>
+                      <a href="#" aria-label="Watch on YouTube" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
+                        <iconify-icon icon="simple-icons:youtube" width="14" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
+                      </a>
+                    </div>
+                  </div>
+
+                  <nav aria-label="Product">
+                    <p className="text-xs font-medium uppercase tracking-widest text-white/40 font-geist">Product</p>
+                    <ul className="mt-4 space-y-2.5 text-sm font-geist">
+                      <li><button onClick={() => navigateTo('history')} className="text-white/60 hover:text-white transition-colors">Scan Archives</button></li>
+                      <li><button onClick={() => navigateTo('compare')} className="text-white/60 hover:text-white transition-colors">Progression Mapping</button></li>
+                      <li><button onClick={() => navigateTo('pricing')} className="text-white/60 hover:text-white transition-colors">Subscription</button></li>
+                      <li><button onClick={checkQuotaAndOpenUpload} className="text-white/60 hover:text-white transition-colors">New Scan</button></li>
+                    </ul>
+                  </nav>
+
+                  <nav aria-label="Learn">
+                    <p className="text-xs font-medium uppercase tracking-widest text-white/40 font-geist">Learn</p>
+                    <ul className="mt-4 space-y-2.5 text-sm font-geist">
+                      <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Symptoms Guide</a></li>
+                      <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Causes & Triggers</a></li>
+                      <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Care Plans</a></li>
+                      <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Glossary</a></li>
+                    </ul>
+                  </nav>
+
+                  <nav aria-label="Company">
+                    <p className="text-xs font-medium uppercase tracking-widest text-white/40 font-geist">Company</p>
+                    <ul className="mt-4 space-y-2.5 text-sm font-geist">
+                      <li><a href="#about" onClick={() => navigateTo('home')} className="text-white/60 hover:text-white transition-colors">About Us</a></li>
+                      <li><a href="#about" onClick={() => navigateTo('home')} className="text-white/60 hover:text-white transition-colors">Developers</a></li>
+                      <li><a href="mailto:support@derma-assist.ai" className="text-white/60 hover:text-white transition-colors">support@derma-assist.ai</a></li>
+                    </ul>
+                  </nav>
+                </div>
+
+                <div className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p className="text-xs text-white/40 font-geist">
+                    © 2026 Derma Assist AI Labs. Educational tool — not clinical diagnosis.
+                  </p>
+                  <div className="flex items-center gap-5 text-xs font-geist">
+                    <a href="#" className="text-white/40 hover:text-white/80 transition-colors">Privacy</a>
+                    <a href="#" className="text-white/40 hover:text-white/80 transition-colors">Terms</a>
+                    <a href="#" className="text-white/40 hover:text-white/80 transition-colors">Cookies</a>
+                  </div>
+                </div>
+              </footer>
             </div>
           )}
 
-          {/* PREVIEW SCREEN */}
+          {/* VIEWS */}
           {currentScreen === 'preview' && selectedImage && (
             <div className="max-w-xl mx-auto py-12 px-6 relative z-10 animate-in fade-in">
               <h3 className="font-geist font-medium text-xl text-white mb-6 text-center">Verification Preview</h3>
@@ -867,302 +946,255 @@ export default function App() {
                 <img src={selectedImage} className="w-full aspect-[4/3] object-cover rounded-xl" alt="Preview" />
               </div>
               <div className="flex flex-col sm:flex-row gap-4 font-geist">
-                <button onClick={startAnalysis} className="flex-1 py-3.5 rounded-full font-medium text-[#12300f] text-xs uppercase tracking-wider transition-all hover:scale-[1.02]" style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}>
-                  Analyze Pattern Now
+                <button 
+                  onClick={startAnalysis} 
+                  className="flex-1 py-3.5 rounded-full font-medium text-[#12300f] text-xs uppercase tracking-wider hover:scale-[1.02] transition-all" 
+                  style={{ backgroundColor: '#c8f542' }}
+                >
+                  Analyze Pattern
                 </button>
-                <button onClick={checkQuotaAndOpenUpload} className="px-6 py-3.5 rounded-full font-medium text-white/80 text-xs uppercase tracking-wider transition-all hover:text-white border border-white/18">
-                  Retake Photo
+                <button 
+                  onClick={checkQuotaAndOpenUpload} 
+                  className="px-6 py-3.5 rounded-full font-medium text-white/80 text-xs uppercase tracking-wider border border-white/18 hover:bg-white/10 transition-all"
+                >
+                  Retake
                 </button>
               </div>
             </div>
           )}
 
-          {/* ANALYZING SCREEN */}
           {currentScreen === 'analyzing' && (
             <div className="py-28 text-center flex flex-col items-center justify-center relative z-10 font-geist">
               <div className="w-16 h-16 rounded-full border-4 border-[#c8f542]/30 border-t-[#c8f542] animate-spin mb-6" />
-              <p className="font-medium text-white uppercase tracking-widest text-sm">
-                Analyzing Skin Telemetry via Groq Vision AI...
-              </p>
+              <p className="font-medium text-white uppercase tracking-widest text-sm">Analyzing Skin Telemetry...</p>
             </div>
           )}
 
-          {/* RESULT SCREEN */}
           {currentScreen === 'result' && analysis && (
             <div className="max-w-4xl mx-auto py-8 px-6 relative z-10 animate-in fade-in">
               <AnalysisView analysis={analysis} selectedImage={selectedImage} />
             </div>
           )}
-
-          {/* HISTORY SCREEN */}
+          
           {currentScreen === 'history' && (
             <div className="max-w-4xl mx-auto py-8 px-6 relative z-10 animate-in fade-in">
               <div className="flex justify-between items-center mb-8">
                 <div>
-                  <h3 className="font-geist font-medium text-2xl text-white">Scan Archives</h3>
-                  <p className="text-xs text-white/50 font-geist mt-1">{entries.length} scans saved locally</p>
+                  <h3 className="font-geist font-medium text-2xl text-white">Archives</h3>
+                  <p className="text-xs text-white/50">{entries.length} scans</p>
                 </div>
-
-                <div className="flex items-center gap-3">
+                <div className="flex gap-3">
                   {entries.length > 0 && (
-                    <button onClick={clearAllHistory} className="px-4 py-2 rounded-full text-xs font-geist text-white/60 hover:text-white border border-white/10 hover:border-white/30 transition-all">
-                      Clear Archives
+                    <button 
+                      onClick={clearAllHistory} 
+                      className="px-4 py-2 rounded-full text-xs font-geist text-white/60 border border-white/10 hover:bg-white/10 transition-all"
+                    >
+                      Clear
                     </button>
                   )}
-                  <button onClick={checkQuotaAndOpenUpload} className="rounded-full px-5 py-2 text-xs font-medium text-[#12300f] font-geist uppercase" style={{ backgroundColor: '#c8f542' }}>
+                  <button 
+                    onClick={checkQuotaAndOpenUpload} 
+                    className="rounded-full px-5 py-2 text-xs font-medium text-[#12300f] font-geist hover:scale-105 transition-all" 
+                    style={{ backgroundColor: '#c8f542' }}
+                  >
                     New Scan
                   </button>
                 </div>
               </div>
-
-              {entries.length === 0 ? (
-                <div className="py-20 text-center rounded-2xl liquid-glass-card">
-                  <p className="font-geist text-xs text-white/50 uppercase tracking-widest">Scan archive is currently empty</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {entries.slice().reverse().map(e => (
-                    <div 
-                      key={e.id} 
-                      onClick={() => { if (e.analysis) { setAnalysis(e.analysis); setSelectedImage(e.imageData); navigateTo('result'); } }} 
-                      className="liquid-glass-card rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:border-white/30 transition-all group" 
-                    >
-                      <div className="flex items-center gap-4">
-                        <img src={e.imageData} className="w-16 h-16 rounded-xl object-cover" alt="Scan" />
-                        <div>
-                          <h4 className="font-geist font-medium text-white text-sm">{e.label}</h4>
-                          <p className="font-geist text-xs text-white/50">{new Date(e.timestamp).toLocaleDateString()}</p>
-                        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {entries.slice().reverse().map(e => (
+                  <div 
+                    key={e.id} 
+                    onClick={() => { 
+                      if (e.analysis) { 
+                        setAnalysis(e.analysis); 
+                        setSelectedImage(e.imageData); 
+                        navigateTo('result'); 
+                      } 
+                    }} 
+                    className="liquid-glass-card rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:-translate-y-1 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <img src={e.imageData} className="w-16 h-16 rounded-xl object-cover" />
+                      <div>
+                        <h4 className="font-geist font-medium text-white text-sm">{e.label}</h4>
                       </div>
-
-                      <button 
-                        onClick={(ev) => deleteEntry(e.id, ev)}
-                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 flex items-center justify-center transition-colors"
-                        title="Delete Scan"
-                      >
-                        <iconify-icon icon="solar:trash-bin-trash-bold" width="16"></iconify-icon>
-                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <button 
+                      onClick={(ev) => deleteEntry(e.id, ev)} 
+                      className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 flex items-center justify-center transition-all"
+                    >
+                      <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* COMPARE SCREEN */}
           {currentScreen === 'compare' && (
             <div className="max-w-4xl mx-auto py-8 px-6 relative z-10 animate-in fade-in">
               <h3 className="font-geist font-medium text-2xl text-white mb-8 text-center">Progression Mapping</h3>
-              <ProgressionCompare entries={entries} />
+              <ProgressionCompare entries={entries} onStartNewScan={checkQuotaAndOpenUpload} />
             </div>
           )}
 
-          {/* SUBSCRIPTION NATIVE PAGE VIEW */}
+          {/* PRICING INTEGRATION WITH ONSUCCESS ADDITION */}
           {currentScreen === 'pricing' && (
             <div className="max-w-4xl mx-auto py-8 px-6 relative z-10 animate-in fade-in">
               <PricingModal 
                 onClose={() => navigateTo('home')}
-                onSuccess={() => {
-                  setScanCount(0);
+                onSuccess={(planId) => {
+                  let addedScans = 0;
+                  if (planId === 'day') addedScans = 15;
+                  if (planId === 'pro') addedScans = 100;
+                  if (planId === 'annual') addedScans = 1300;
+
+                  const newTotal = paidScansRemaining + addedScans;
+                  setPaidScansRemaining(newTotal);
+                  localStorage.setItem('derm_paid_scans', newTotal.toString());
+                  
                   navigateTo('home');
                 }}
               />
             </div>
           )}
         </div>
-
-        {/* DETAILED FOOTER - ONLY RENDERED ON HOME SCREEN */}
-        {currentScreen === 'home' && (
-          <div>
-            {/* BOTTOM CTA CONTAINER */}
-            <section id="cta" className="relative z-10 px-5 sm:px-8 lg:px-12 py-16 lg:py-20">
-              <div className="rounded-[28px] p-8 sm:p-12 lg:p-16 text-center relative overflow-hidden liquid-glass-card-lime">
-                <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%,rgba(200,245,66,0.15) 0%,transparent 60%)' }} aria-hidden="true"></div>
-                <h2 className="relative text-white text-3xl sm:text-4xl lg:text-5xl font-geist tracking-tighter max-w-2xl mx-auto" style={{ lineHeight: 1.15 }} data-reveal-words="">
-                  Ready to monitor your
-                  <span style={{ color: '#c8f542' }}> skin health</span>
-                  ?
-                </h2>
-                <p className="relative mt-5 text-sm text-white/60 leading-relaxed max-w-md mx-auto font-geist" data-fade="">
-                  Join 24,000+ users. Free for your daily tracking — clear visual guidance, no guesswork.
-                </p>
-                <div className="relative mt-8 flex flex-col sm:flex-row items-center justify-center gap-3" data-fade="">
-                  <button 
-                    onClick={checkQuotaAndOpenUpload}
-                    className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-[#12300f] hover:brightness-105 transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] font-geist" 
-                    style={{ backgroundColor: '#c8f542', boxShadow: '0 8px 24px -6px rgba(200,245,66,0.4)' }}
-                  >
-                    <iconify-icon icon="solar:arrow-right-up-linear" width="15" style={{ strokeWidth: 1.5 }}></iconify-icon>
-                    Start Free Scan
-                  </button>
-
-                  <button 
-                    onClick={scrollToTop}
-                    className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white/85 hover:text-white hover:bg-white/5 transition-colors duration-150 font-geist" 
-                    style={{ border: '1px solid rgba(255,255,255,0.18)' }}
-                  >
-                    <iconify-icon icon="solar:play-circle-linear" width="15" style={{ strokeWidth: 1.5 }}></iconify-icon>
-                    Back to Top
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {/* FOOTER */}
-            <footer className="relative z-10 px-5 sm:px-8 lg:px-12 pt-14 pb-8" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
-              <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-10">
-                <div className="lg:col-span-2">
-                  <div onClick={() => navigateTo('home')} className="flex items-center gap-2.5 cursor-pointer">
-                    <Logo size={28} />
-                    <span className="text-white font-medium text-base font-geist tracking-tight">
-                      Derma Assist AI
-                    </span>
-                  </div>
-                  <p className="mt-4 text-sm text-white/50 leading-relaxed max-w-xs font-geist">
-                    Your trusted AI dermatological analysis companion. Clarity over hype, since 2026.
-                  </p>
-                  <div className="mt-6 flex items-center gap-2">
-                    <a href="#" aria-label="Follow on X" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
-                      <iconify-icon icon="simple-icons:x" width="13" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
-                    </a>
-                    <a href="#" aria-label="Join Discord" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
-                      <iconify-icon icon="simple-icons:discord" width="14" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
-                    </a>
-                    <a href="#" aria-label="View GitHub" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
-                      <iconify-icon icon="simple-icons:github" width="14" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
-                    </a>
-                    <a href="#" aria-label="Watch on YouTube" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
-                      <iconify-icon icon="simple-icons:youtube" width="14" style={{ color: 'rgba(255,255,255,0.7)' }}></iconify-icon>
-                    </a>
-                  </div>
-                </div>
-
-                <nav aria-label="Product">
-                  <p className="text-xs font-medium uppercase tracking-widest text-white/40 font-geist">Product</p>
-                  <ul className="mt-4 space-y-2.5 text-sm font-geist">
-                    <li><button onClick={() => navigateTo('history')} className="text-white/60 hover:text-white transition-colors">Scan Archives</button></li>
-                    <li><button onClick={() => navigateTo('compare')} className="text-white/60 hover:text-white transition-colors">Progression Mapping</button></li>
-                    <li><button onClick={() => navigateTo('pricing')} className="text-white/60 hover:text-white transition-colors">Subscription</button></li>
-                    <li><button onClick={checkQuotaAndOpenUpload} className="text-white/60 hover:text-white transition-colors">New Scan</button></li>
-                  </ul>
-                </nav>
-
-                <nav aria-label="Learn">
-                  <p className="text-xs font-medium uppercase tracking-widest text-white/40 font-geist">Learn</p>
-                  <ul className="mt-4 space-y-2.5 text-sm font-geist">
-                    <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Symptoms Guide</a></li>
-                    <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Causes & Triggers</a></li>
-                    <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Care Plans</a></li>
-                    <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Glossary</a></li>
-                  </ul>
-                </nav>
-
-                <nav aria-label="Company">
-                  <p className="text-xs font-medium uppercase tracking-widest text-white/40 font-geist">Company</p>
-                  <ul className="mt-4 space-y-2.5 text-sm font-geist">
-                    <li><a href="#about" onClick={() => navigateTo('home')} className="text-white/60 hover:text-white transition-colors">About Us</a></li>
-                    <li><a href="#about" onClick={() => navigateTo('home')} className="text-white/60 hover:text-white transition-colors">Developers</a></li>
-                    <li><a href="mailto:support@derma-assist.ai" className="text-white/60 hover:text-white transition-colors">support@derma-assist.ai</a></li>
-                  </ul>
-                </nav>
-              </div>
-
-              <div className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <p className="text-xs text-white/40 font-geist">
-                  © 2026 Derma Assist AI Labs. Educational tool — not clinical diagnosis.
-                </p>
-                <div className="flex items-center gap-5 text-xs font-geist">
-                  <a href="#" className="text-white/40 hover:text-white/80 transition-colors">Privacy</a>
-                  <a href="#" className="text-white/40 hover:text-white/80 transition-colors">Terms</a>
-                  <a href="#" className="text-white/40 hover:text-white/80 transition-colors">Cookies</a>
-                </div>
-              </div>
-            </footer>
-          </div>
-        )}
-
       </main>
 
-      {/* CLIENT LOGIN MODAL */}
+      {/* MODALS */}
       {showLoginModal && (
         <LoginModal 
           onClose={() => setShowLoginModal(false)}
-          onSuccess={(email) => {
+          onSuccess={(email, finalName) => {
             setUserEmail(email);
+            setUserName(finalName);
             setIsLoggedIn(true);
             setShowLoginModal(false);
 
-            // Fetch name from user object or profile
-            const savedUser = localStorage.getItem('derm_user');
-            if (savedUser) {
-              try {
-                const parsed = JSON.parse(savedUser);
-                if (parsed.name) setUserName(parsed.name);
-              } catch (e) {}
+            const userHistoryKey = `derm_history_${email}`;
+            const savedAccHistory = localStorage.getItem(userHistoryKey);
+            if (savedAccHistory) {
+              try { 
+                setEntries(JSON.parse(savedAccHistory)); 
+              } catch (e) { 
+                setEntries([]); 
+              }
+            } else {
+              setEntries([]);
             }
           }}
         />
       )}
 
-      {/* USER ENCRYPTED HEALTH PROFILE MODAL */}
       {showProfileModal && (
         <UserProfileModal
           onClose={() => setShowProfileModal(false)}
           userEmail={userEmail}
-          onLogout={handleLogout}
+          onLogout={() => setShowLogoutConfirm(true)}
           onProfileUpdate={(newName) => setUserName(newName)}
         />
       )}
 
-      {/* UPLOAD SHEET MODAL */}
+      {showLogoutConfirm && (
+        <div 
+          className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-[#041408]/90 backdrop-blur-sm animate-in fade-in duration-200" 
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div 
+            className="w-full max-w-sm bg-[#0a2a12] rounded-[28px] p-8 text-center shadow-2xl border border-white/20 font-geist animate-in zoom-in-95 duration-200" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-5 border border-red-500/20">
+               <iconify-icon icon="solar:logout-2-bold" width="28"></iconify-icon>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Sign Out?</h3>
+            <p className="text-xs text-white/60 mb-8 leading-relaxed">
+              Are you sure you want to securely sign out? Your telemetry archives remain encrypted locally.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowLogoutConfirm(false)} 
+                className="flex-1 py-3 rounded-full text-white/70 font-medium text-xs border border-white/20 hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeLogout} 
+                className="flex-1 py-3 rounded-full text-white bg-red-500/80 hover:bg-red-500 font-semibold text-xs transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showUploadSheet && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-[#041408]/90 animate-in fade-in" onClick={() => setShowUploadSheet(false)}>
-          <div className="w-full max-w-sm liquid-glass-card rounded-[28px] p-8 relative shadow-2xl animate-in zoom-in-95 duration-300 font-geist" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-[#041408]/90 animate-in fade-in" 
+          onClick={() => setShowUploadSheet(false)}
+        >
+          <div 
+            className="w-full max-w-sm liquid-glass-card rounded-[28px] p-8 relative shadow-2xl animate-in zoom-in-95 duration-300 font-geist" 
+            onClick={e => e.stopPropagation()}
+          >
             <div className="text-center mb-6">
-              <span className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[10px] font-semibold text-[#c8f542] uppercase tracking-wider mb-2" style={{ border: '1px solid rgba(200,245,66,0.35)', background: 'rgba(200,245,66,0.06)' }}>
+              <span 
+                className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[10px] font-semibold text-[#c8f542] uppercase tracking-wider mb-2" 
+                style={{ border: '1px solid rgba(200,245,66,0.35)', background: 'rgba(200,245,66,0.06)' }}
+              >
                 IMAGE SELECTION
               </span>
               <h3 className="font-semibold text-xl text-white">Capture or Upload</h3>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <button 
-                onClick={() => cameraInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-[#c8f542]/10 hover:border-[#c8f542]/40 transition-all active:scale-95 group"
+                onClick={() => cameraInputRef.current?.click()} 
+                className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-[#c8f542]/10 hover:border-[#c8f542]/40 transition-all group"
               >
                 <iconify-icon icon="solar:camera-bold" width="36" height="36" style={{ color: '#c8f542' }}></iconify-icon>
                 <span className="text-xs font-semibold text-white uppercase">Camera</span>
               </button>
-
               <button 
-                onClick={() => galleryInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-[#c8f542]/10 hover:border-[#c8f542]/40 transition-all active:scale-95 group"
+                onClick={() => galleryInputRef.current?.click()} 
+                className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-[#c8f542]/10 hover:border-[#c8f542]/40 transition-all group"
               >
                 <iconify-icon icon="solar:gallery-wide-bold" width="36" height="36" style={{ color: '#c8f542' }}></iconify-icon>
                 <span className="text-xs font-semibold text-white uppercase">Gallery</span>
               </button>
             </div>
-
             <button 
               onClick={() => setShowUploadSheet(false)} 
-              className="w-full mt-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-white/70 hover:text-white uppercase tracking-wider transition-colors"
+              className="w-full mt-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-white/70 hover:text-white uppercase tracking-wider transition-all hover:bg-white/10"
             >
               Cancel
             </button>
-
-            <input type="file" ref={cameraInputRef} onChange={handleUpload} className="hidden" accept="image/*" capture="environment" />
-            <input type="file" ref={galleryInputRef} onChange={handleUpload} className="hidden" accept="image/*" />
+            <input 
+              type="file" 
+              ref={cameraInputRef} 
+              onChange={handleUpload} 
+              className="hidden" 
+              accept="image/*" 
+              capture="environment" 
+            />
+            <input 
+              type="file" 
+              ref={galleryInputRef} 
+              onChange={handleUpload} 
+              className="hidden" 
+              accept="image/*" 
+            />
           </div>
         </div>
       )}
 
-      {/* AI VISION LIVE CHAT MODAL */}
       {showChatModal && (
         <SkinChatModal 
-          onClose={() => setShowChatModal(false)}
+          onClose={() => setShowChatModal(false)} 
+          onOpenPricing={() => navigateTo('pricing')} 
         />
       )}
-
     </div>
   );
 }
