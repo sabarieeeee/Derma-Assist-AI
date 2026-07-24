@@ -41,8 +41,8 @@ Provide output in JSON format with exact keys:
             ]
           }
         ],
-        temperature: 0.2,
-        max_tokens: 800,
+        temperature: 0.6,
+        max_tokens: 2048,
         response_format: { type: 'json_object' }
       })
     });
@@ -94,8 +94,8 @@ Provide output in JSON format with exact keys:
         body: JSON.stringify({
           model: 'qwen/qwen3.6-27b',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 600,
+          temperature: 0.6,
+          max_tokens: 2048,
           response_format: { type: 'json_object' }
         })
       });
