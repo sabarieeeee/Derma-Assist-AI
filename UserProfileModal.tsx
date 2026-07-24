@@ -32,12 +32,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('derm_user');
     let initialName = '';
+    const savedUser = localStorage.getItem('derm_user');
     if (savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
-        if (parsedUser.name && parsedUser.name !== 'Google User' && parsedUser.name !== 'Apple User') {
+        if (parsedUser.name) {
           initialName = parsedUser.name;
         }
       } catch (e) {}
@@ -47,7 +47,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
     if (storedProfile) {
       try {
         const parsed = JSON.parse(storedProfile);
-        setName(initialName || parsed.name || userEmail.split('@')[0]);
+        setName(parsed.name || initialName || userEmail.split('@')[0]);
         setAge(parsed.age || 28);
         setGender(parsed.gender || 'Male');
         setHeight(parsed.height || '178 cm');
@@ -89,13 +89,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
     localStorage.setItem('derm_patient_profile', JSON.stringify(profileObj));
 
     const savedUser = localStorage.getItem('derm_user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        parsedUser.name = finalName;
-        localStorage.setItem('derm_user', JSON.stringify(parsedUser));
-      } catch (e) {}
-    }
+    let parsedUser = savedUser ? JSON.parse(savedUser) : {};
+    parsedUser.name = finalName;
+    parsedUser.email = userEmail;
+    localStorage.setItem('derm_user', JSON.stringify(parsedUser));
 
     onProfileUpdate(finalName);
     setIsSaved(true);
@@ -295,7 +292,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ onClose, use
           <div className="pt-4 flex items-center justify-between gap-4">
             <button 
               type="button"
-              onClick={() => onLogout()} 
+              onClick={() => {
+                localStorage.removeItem('derm_user');
+                localStorage.removeItem('derm_patient_profile');
+                onLogout();
+              }} 
               className="px-5 py-3 rounded-full text-red-400 font-geist text-xs font-medium border border-red-500/30 hover:bg-red-500/10 transition-colors"
             >
               Sign Out
