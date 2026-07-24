@@ -25,10 +25,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) =>
       if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const finalName = name || email.split('@')[0];
+        
+        // Save session locally for persistence
+        localStorage.setItem('derm_user', JSON.stringify({ email: userCredential.user.email, name: finalName }));
         onSuccess(userCredential.user.email!, finalName);
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        onSuccess(userCredential.user.email!, email.split('@')[0]);
+        const derivedName = email.split('@')[0];
+        
+        localStorage.setItem('derm_user', JSON.stringify({ email: userCredential.user.email, name: derivedName }));
+        onSuccess(userCredential.user.email!, derivedName);
       }
     } catch (err: any) {
       setError(err.message.replace('Firebase:', '').trim());
@@ -42,7 +48,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) =>
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      onSuccess(result.user.email!, result.user.displayName || result.user.email!.split('@')[0]);
+      const googleName = result.user.displayName || result.user.email!.split('@')[0];
+      const googleEmail = result.user.email!;
+
+      // Auto-fill and save Google details into local profile storage immediately
+      const existingProfileStr = localStorage.getItem('derm_patient_profile');
+      let profileObj = existingProfileStr ? JSON.parse(existingProfileStr) : {};
+      
+      profileObj = {
+        ...profileObj,
+        name: googleName,
+        email: googleEmail,
+      };
+      localStorage.setItem('derm_patient_profile', JSON.stringify(profileObj));
+      localStorage.setItem('derm_user', JSON.stringify({ email: googleEmail, name: googleName }));
+
+      onSuccess(googleEmail, googleName);
     } catch (err: any) {
       setError(err.message.replace('Firebase:', '').trim());
     } finally {
