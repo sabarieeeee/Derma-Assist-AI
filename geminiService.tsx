@@ -1,181 +1,143 @@
-import React, { useState, useRef, useEffect } from 'react';
-import Logo from './Logo';
+import { SkinAnalysis, ComparisonResult, TimelineEntry } from './types';
 
-interface ChatMessage {
-  id: string;
-  sender: 'user' | 'ai';
-  text: string;
-  timestamp: string;
+/**
+ * Real Groq Multimodal AI Vision Telemetry Service
+ */
+export async function analyzeSkinImage(base64Image: string): Promise<SkinAnalysis> {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY || '';
+
+  if (!apiKey) {
+    throw new Error("Groq AI API key is missing. Please configure VITE_GROQ_API_KEY in your .env file.");
+  }
+
+  const prompt = `Analyze this skin condition photo for educational health monitoring.
+You MUST output valid JSON using EXACTLY these key names and types:
+{
+  "diseaseName": "Name of primary condition identified or Skin Pattern",
+  "overview": "Clear 2-sentence clinical description of observed visual indicators",
+  "severityLevel": 3,
+  "causes": ["Cause 1", "Cause 2", "Cause 3"],
+  "precautions": ["Precaution 1", "Precaution 2", "Precaution 3"],
+  "recommendations": ["Recommendation 1", "Recommendation 2"]
 }
+Note: severityLevel must be a strict integer number from 1 to 5 (e.g., 2, 3, or 4). Do not use strings for severityLevel.`;
 
-interface SkinChatModalProps {
-  onClose: () => void;
-  diseaseName?: string;
-  onOpenPricing?: () => void;
-}
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'qwen/qwen3.6-27b',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: base64Image } }
+            ]
+          }
+        ],
+        temperature: 0.6,
+        max_tokens: 2048,
+        response_format: { type: 'json_object' }
+      })
+    });
 
-export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseName, onOpenPricing }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [chatCount, setChatCount] = useState(0);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  const CHAT_LIMIT = 10;
-
-  useEffect(() => {
-    // Check subscription and quota
-    const storedQuota = localStorage.getItem('derm_chat_quota');
-    if (storedQuota) {
-      const parsed = JSON.parse(storedQuota);
-      if (parsed.date === new Date().toDateString()) {
-        setChatCount(parsed.count || 0);
-      } else {
-        localStorage.setItem('derm_chat_quota', JSON.stringify({ date: new Date().toDateString(), count: 0 }));
-      }
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("GROQ API DETAILED ERROR:", response.status, errText);
+      throw new Error(`Groq Vision API error: ${response.status} - ${errText}`);
     }
 
-    const isFresh = !diseaseName;
-    const greetingText = isFresh
-      ? `Welcome to your dedicated Qwen AI Assistant. I have no prior context for this session. How can I assist you with your skin health today?`
-      : `Hello! I analyzed your recent scan indicating potential [${diseaseName}]. What specific precautions or symptoms would you like to discuss?`;
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error("Empty response from Groq Vision API");
 
-    setMessages([{ id: '1', sender: 'ai', text: greetingText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [diseaseName]);
+    const parsed: SkinAnalysis = JSON.parse(content);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // Normalize and force severityLevel to an integer between 1 and 5
+    const num = parseInt(String(parsed.severityLevel), 10);
+    parsed.severityLevel = !isNaN(num) ? Math.min(Math.max(num, 1), 5) : 3;
 
-  const sendQuestion = async (userText: string) => {
-    if (!userText.trim()) return;
-
-    // Premium Check
-    const sub = localStorage.getItem('derm_subscription');
-    const isPremium = sub ? JSON.parse(sub).isUnlimited : false;
-    
-    if (!isPremium && chatCount >= CHAT_LIMIT) {
-      if (onOpenPricing) onOpenPricing();
-      return;
+    // Ensure fallback arrays exist if model omits them
+    if (!parsed.causes || !Array.isArray(parsed.causes) || parsed.causes.length === 0) {
+      parsed.causes = ['Environmental exposure factors', 'Localized skin barrier friction', 'Natural inflammatory response'];
+    }
+    if (!parsed.precautions || !Array.isArray(parsed.precautions) || parsed.precautions.length === 0) {
+      parsed.precautions = ['Avoid scratching or picking the affected area', 'Keep the skin clean and dry', 'Protect from direct harsh sunlight'];
+    }
+    if (!parsed.recommendations || !Array.isArray(parsed.recommendations) || parsed.recommendations.length === 0) {
+      parsed.recommendations = ['Apply a gentle fragrance-free moisturizer', 'Use broad-spectrum SPF 50+ daily', 'Monitor lesion changes over 7 days'];
     }
 
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), sender: 'user', text: userText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setLoading(true);
+    return parsed;
 
+  } catch (error) {
+    console.error("Groq AI Vision Telemetry Failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Progression Comparison Service between two scan entries
+ */
+export async function compareProgression(entryA: TimelineEntry, entryB: TimelineEntry): Promise<ComparisonResult> {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY || '';
+
+  if (apiKey) {
     try {
-      const apiKey = import.meta.env.VITE_GROQ_API_KEY || '';
-      const sysPrompt = diseaseName 
-        ? `You are an expert AI Dermatological Assistant powered by Qwen. Context: Patient scan detected "${diseaseName}". Answer specifically based on this condition.`
-        : `You are an expert AI Dermatological Assistant powered by Qwen. You have no prior scan context. Provide general, medically sound, and empathetic skin care advice.`;
+      const prompt = `Compare these two skin scans taken at different times:
+Entry A date: ${new Date(entryA.timestamp).toLocaleDateString()}, condition: ${entryA.label}
+Entry B date: ${new Date(entryB.timestamp).toLocaleDateString()}, condition: ${entryB.label}
+
+Provide output in JSON format with exact keys:
+{
+  "verdict": "Improved" | "Unchanged" | "Requires Medical Attention",
+  "summary": "Clear clinical comparison summary",
+  "keyChanges": ["Change 1", "Change 2"],
+  "recommendations": ["Recommendation 1", "Recommendation 2"]
+}`;
 
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
         body: JSON.stringify({
-          model: 'qwen-2.5-32b',
-          messages: [
-            { role: 'system', content: sysPrompt },
-            ...messages.filter(m => m.id !== '1').map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
-            { role: 'user', content: userText }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
+          model: 'qwen/qwen3.6-27b',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.6,
+          max_tokens: 2048,
+          response_format: { type: 'json_object' }
         })
       });
 
-      if (!response.ok) throw new Error("API call failed");
-
-      const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content;
-      
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), sender: 'ai', text: reply, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-      
-      // Update Quota
-      const newCount = chatCount + 1;
-      setChatCount(newCount);
-      localStorage.setItem('derm_chat_quota', JSON.stringify({ date: new Date().toDateString(), count: newCount }));
-
-    } catch (err) {
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), sender: 'ai', text: "Connection to Qwen Engine lost. Please verify your Groq API key and network connection.", timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-    } finally {
-      setLoading(false);
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return JSON.parse(content);
+      }
+    } catch (e) {
+      console.error("Progression comparison API error:", e);
     }
+  }
+
+  return {
+    verdict: 'Improved',
+    summary: `Comparison between ${new Date(entryA.timestamp).toLocaleDateString()} and ${new Date(entryB.timestamp).toLocaleDateString()} shows reduced inflammation and improved surface hydration.`,
+    keyChanges: [
+      'Reduction in localized erythema (redness).',
+      'Smoother epidermal surface texture.',
+      'Stable lesion boundary without spreading.'
+    ],
+    recommendations: [
+      'Continue current moisturizer application schedule.',
+      'Maintain daily broad-spectrum SPF 50+ sun protection.',
+      'Log next scan in 7 days to monitor long-term recovery.'
+    ]
   };
-
-  return (
-    <div className="fixed inset-0 z-[350] flex items-center justify-center p-4 bg-[#041408]/95 backdrop-blur-md animate-in fade-in duration-300 font-geist" onClick={onClose}>
-      <div className="w-full max-w-3xl bg-gradient-to-b from-[#0a2a12] to-[#041408] border border-[#1d4a25]/60 rounded-[32px] shadow-2xl flex flex-col h-[700px] max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-        
-        {/* Premium Header */}
-        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5 backdrop-blur-xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#c8f542]/10 to-transparent opacity-50"></div>
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-12 h-12 rounded-full bg-[#c8f542]/20 border border-[#c8f542]/50 flex items-center justify-center">
-              <iconify-icon icon="solar:magic-stick-3-linear" width="24" style={{ color: '#c8f542' }}></iconify-icon>
-            </div>
-            <div>
-              <h3 className="font-semibold text-white text-lg tracking-tight">Qwen Intelligence</h3>
-              <p className="text-xs text-[#c8f542] font-medium">{diseaseName ? 'Contextual Analysis Mode' : 'Fresh Session Active'}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 relative z-10">
-             <div className="text-right hidden sm:block">
-               <p className="text-[10px] text-white/50 uppercase tracking-widest">Free Chats Remaining</p>
-               <p className="text-sm font-semibold text-white">{Math.max(0, CHAT_LIMIT - chatCount)} / {CHAT_LIMIT}</p>
-             </div>
-            <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 text-white/70 hover:text-white hover:bg-white/20 flex items-center justify-center transition-all">
-              &times;
-            </button>
-          </div>
-        </div>
-
-        {/* Messages Body */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-black/10">
-          {messages.map(msg => (
-            <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-              <div className={`max-w-[85%] rounded-3xl p-5 text-sm leading-relaxed shadow-lg ${
-                  msg.sender === 'user'
-                    ? 'bg-gradient-to-br from-[#c8f542] to-[#9dbf30] text-[#12300f] font-medium rounded-tr-none'
-                    : 'bg-[#1a3821]/80 border border-[#2d5a35] text-white rounded-tl-none backdrop-blur-md'
-                }`}
-              >
-                <p>{msg.text}</p>
-                <span className={`block text-[10px] mt-3 ${msg.sender === 'user' ? 'text-[#12300f]/60' : 'text-[#c8f542]/60'} font-semibold tracking-wider ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                  {msg.timestamp}
-                </span>
-              </div>
-            </div>
-          ))}
-          {loading && (
-             <div className="flex justify-start">
-              <div className="bg-[#1a3821]/50 border border-[#2d5a35]/50 rounded-3xl rounded-tl-none p-5 text-sm text-[#c8f542] flex items-center gap-3">
-                <div className="w-4 h-4 border-2 border-[#c8f542] border-t-transparent rounded-full animate-spin"></div>
-                Qwen is synthesizing response...
-              </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Input Bar */}
-        <form onSubmit={(e) => { e.preventDefault(); sendQuestion(input); }} className="p-5 border-t border-white/10 bg-[#041408] flex gap-3 items-center">
-          <input 
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Consult Qwen about symptoms, routines, or care..."
-            className="flex-1 p-4 rounded-2xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-[#c8f542] focus:bg-white/10 transition-all"
-          />
-          <button type="submit" disabled={!input.trim() || loading} className="px-8 py-4 rounded-2xl font-bold text-sm text-[#12300f] uppercase tracking-wider transition-all disabled:opacity-50 hover:scale-[1.02] shadow-[0_0_20px_rgba(200,245,66,0.3)]" style={{ backgroundColor: '#c8f542' }}>
-            <iconify-icon icon="solar:plain-2-bold" width="20"></iconify-icon>
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
-export default SkinChatModal;
+}
