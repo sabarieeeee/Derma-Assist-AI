@@ -130,17 +130,17 @@ export default function App() {
     }
   }, [currentScreen]);
 
-  useEffect(() => {
-    let currentEmail = '';
+    // Add this inside your main App component initialization (e.g., inside useEffect)
+    useEffect(() => {
     const savedUser = localStorage.getItem('derm_user');
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
-        if (parsed.isLoggedIn) {
-          setIsLoggedIn(true);
+        if (parsed.email) {
+          // Automatically restore session state here
           setUserEmail(parsed.email);
-          currentEmail = parsed.email;
           setUserName(parsed.name || parsed.email.split('@')[0]);
+          setIsLoggedIn(true);
         }
       } catch (e) {}
     }
