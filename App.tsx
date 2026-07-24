@@ -130,17 +130,17 @@ export default function App() {
     }
   }, [currentScreen]);
 
-    // Add this inside your main App component initialization (e.g., inside useEffect)
-    useEffect(() => {
+  useEffect(() => {
+    let activeEmail = '';
     const savedUser = localStorage.getItem('derm_user');
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
         if (parsed.email) {
-          // Automatically restore session state here
           setUserEmail(parsed.email);
           setUserName(parsed.name || parsed.email.split('@')[0]);
           setIsLoggedIn(true);
+          activeEmail = parsed.email;
         }
       } catch (e) {}
     }
@@ -153,8 +153,8 @@ export default function App() {
       } catch (e) {}
     }
 
-    if (currentEmail) {
-      const userHistoryKey = `derm_history_${currentEmail}`;
+    if (activeEmail) {
+      const userHistoryKey = `derm_history_${activeEmail}`;
       const savedAccHistory = localStorage.getItem(userHistoryKey);
       if (savedAccHistory) {
         try { 
@@ -205,7 +205,6 @@ export default function App() {
     } else {
       localStorage.setItem('derm_paid_scans', '0');
     }
-
   }, []);
 
   useEffect(() => {
