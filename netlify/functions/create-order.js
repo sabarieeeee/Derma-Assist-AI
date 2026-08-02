@@ -1,16 +1,30 @@
 const Razorpay = require('razorpay');
 
 exports.handler = async (event) => {
-  // Netlify uses event.httpMethod instead of req.method
+  // 1. Guard against wrong methods
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  // Netlify requires you to parse the body manually
-  const { amount } = JSON.parse(event.body); 
+  let amount;
+  
+  // 2. Safe Parsing: This prevents the 502 crash if the frontend sends a weird payload
+  try {
+    const body = JSON.parse(event.body);
+    amount = body.amount;
+  } catch (parseError) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body sent from frontend' }) };
+  }
 
+  // Razorpay expects amounts in PAISE (e.g., 99 INR = 9900 paise)
   if (!amount || amount < 100) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid amount. Minimum 100 paise required.' }) };
+  }
+
+  // 3. Ensure API keys exist so the Razorpay SDK doesn't crash the function
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.error('CRITICAL: Missing Razorpay environment variables in Netlify.');
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server misconfiguration: Missing API keys' }) };
   }
 
   try {
@@ -19,27 +33,14 @@ exports.handler = async (event) => {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const splitAmount = Math.floor(amount / 4);
-    const DEV_ACCOUNTS = [
-      'acc_Sabari_ID', 
-      'acc_Sanjay_ID', 
-      'acc_Sreyas_ID', 
-      'acc_Vinush_ID'
-    ];
-
+    // 4. Removed the fake transfers array. 
+    // You CANNOT pass dummy strings to Razorpay Route. Add this back only when you have real 'acc_xxx' IDs.
     const order = await razorpay.orders.create({
       amount: amount, 
       currency: 'INR',
-      receipt: `receipt_${Date.now()}`,
-      transfers: DEV_ACCOUNTS.map(accountId => ({
-        account: accountId,
-        amount: splitAmount,
-        currency: 'INR',
-        on_hold: 0
-      }))
+      receipt: `receipt_${Date.now()}`
     });
 
-    // Netlify requires a specific return object format
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -49,7 +50,14 @@ exports.handler = async (event) => {
       })
     };
   } catch (error) {
-    console.error('Razorpay API Error:', error);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create Razorpay order' }) };
+    // 5. Actually log the precise Razorpay error back to the frontend so you aren't guessing
+    console.error('Razorpay API Error Details:', error);
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ 
+        error: 'Failed to create Razorpay order',
+        details: error.description || error.message || 'Unknown Razorpay Error'
+      }) 
+    };
   }
 };
