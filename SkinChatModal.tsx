@@ -20,7 +20,7 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
   const [chatCount, setChatCount] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const CHAT_LIMIT = 50;
+  const CHAT_LIMIT = 10;
 
   useEffect(() => {
     // Check subscription and quota
@@ -89,7 +89,7 @@ export const SkinChatModal: React.FC<SkinChatModalProps> = ({ onClose, diseaseNa
           'Authorization': `Bearer ${apiKey}` 
         },
         body: JSON.stringify({
-          model: 'qwen/qwen3.8 27b', // Guaranteed stable Groq model for text generation
+          model: 'qwen/qwen3.8-27b', // Guaranteed stable Groq model for text generation
           messages: [
             { role: 'system', content: sysPrompt },
             ...messages.filter(m => m.id !== '1').map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
