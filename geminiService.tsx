@@ -30,7 +30,7 @@ Note: severityLevel must be a strict integer number from 1 to 5 (e.g., 2, 3, or 
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'qwen/qwen3.8-27b',
         messages: [
           {
             role: 'user',
@@ -108,7 +108,7 @@ Provide output in JSON format with exact keys:
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'qwen/qwen3.6-27b',
+          model: 'qwen/qwen3.8-27b',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.6,
           max_tokens: 2048,
