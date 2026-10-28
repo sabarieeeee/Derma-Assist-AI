@@ -875,7 +875,7 @@ export default function App() {
                       </span>
                     </div>
                     <p className="mt-4 text-sm text-white/50 leading-relaxed max-w-xs font-geist">
-                      Your trusted AI dermatological analysis companion. Clarity over hype, since 2026, Version - 2.9.2026
+                      Your trusted AI dermatological analysis companion. Clarity over hype, since 2026, V2.9.2026
                     </p>
                     <div className="mt-6 flex items-center gap-2">
                       <a href="#" aria-label="Follow on X" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
