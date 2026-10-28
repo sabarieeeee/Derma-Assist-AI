@@ -41,7 +41,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ fadeOut }) => {
           COPYRIGHT © 2026 • DERMA ASSIST LABS
         </p>
         <p className="text-[10px] font-geist font-bold text-[#c8f542] uppercase tracking-[0.3em]">
-          SYSTEM ACTIVE • V3.3.0
+           V2.9.2026
         </p>
       </div>
     </div>
