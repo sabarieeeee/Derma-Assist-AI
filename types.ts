@@ -27,3 +27,16 @@ export interface ComparisonResult {
   keyChanges: string[];
   recommendations: string[];
 }
+
+export type PlanId = 'day' | 'pro' | 'annual';
+
+export interface Subscription {
+  planId: PlanId;
+  planName: string;
+  status: 'active' | 'cancelled' | 'expired';
+  purchasedAt: number;
+  expiresAt: number;
+  scansTotal: number;
+  scansRemaining: number;
+  cancelledAt?: number | null;
+}
