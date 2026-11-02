@@ -575,8 +575,8 @@ export default function App() {
                   </span>
                   
                   <h1 className="text-white text-4xl sm:text-5xl lg:text-[3.4rem] font-geist tracking-tighter" style={{ lineHeight: 1.12 }} data-reveal-words="">
-                    Your Trusted Compass for
-                    <span style={{ color: '#c8f542' }}> AI Skin Health</span>
+                    Your Trusted AI 
+                    <span style={{ color: '#c8f542' }}> Skin Health Assistant</span>
                   </h1>
                   <p className="mt-6 text-sm text-white/60 leading-relaxed max-w-md font-geist" data-fade="">
                     Track skin health patterns, learn key indicators and monitor recovery progress with confidence — one clean dashboard built for patients and pros alike.
@@ -602,7 +602,7 @@ export default function App() {
                     </div>
                     <div className="flex justify-between text-[10px] mb-3">
                       <span className="text-[#c8f542]/70 font-geist">{subscription && subscription.status !== 'expired' ? subscription.planName : 'Paid Buffer'}</span>
-                      <span className="text-[#c8f542] font-bold font-geist">{paidScansRemaining} remaining</span>
+                      <span className="text-[#c8f542] font-bold font-geist">{paidScansRemaining} Remaining</span>
                     </div>
                     <div className="mt-3 relative h-1.5 rounded-full overflow-visible" style={{ background: 'rgba(255,255,255,0.15)' }} role="slider">
                       <div id="sliderFill" className="absolute left-0 top-0 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(0, (dailyScanCount / quotaLimit) * 100))}%`, backgroundColor: '#c8f542' }}></div>
@@ -618,13 +618,13 @@ export default function App() {
                           <iconify-icon icon="solar:arrow-right-up-linear" width="14" style={{ strokeWidth: 1.5, color: '#c8f542' }}></iconify-icon>
                         </span>
                         <div>
-                          <p className="text-xs font-medium text-white font-geist">Scan Telemetry:</p>
-                          <p className="text-xs text-white/50 font-geist">Micro-Pores Active</p>
+                          <p className="text-xs font-medium text-white font-geist">Scan Insights</p>
+                          <p className="text-xs text-white/50 font-geist">Accuracy Rates</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-medium text-white font-geist">480 Points</p>
-                        <p className="text-xs text-white/50 font-geist">98.4% Accuracy</p>
+                        <p className="text-xs font-medium text-white font-geist"> </p>
+                        <p className="text-xs text-white/50 font-geist">98.4%</p>
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between rounded-xl p-2.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
@@ -633,13 +633,13 @@ export default function App() {
                           <iconify-icon icon="solar:arrow-left-down-linear" width="14" style={{ strokeWidth: 1.5, color: '#c8f542' }}></iconify-icon>
                         </span>
                         <div>
-                          <p className="text-xs font-medium text-white font-geist">AI Benchmark:</p>
-                          <p className="text-xs text-white/50 font-geist">Pattern Verified</p>
+                          <p className="text-xs font-medium text-white font-geist">Analysis Results</p>
+                          <p className="text-xs text-white/50 font-geist">Model Assesment</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-medium text-white font-geist">Groq Vision</p>
-                        <p className="text-xs text-white/50 font-geist">v3.6 Model</p>
+                        <p className="text-xs font-medium text-white font-geist"> </p>
+                        <p className="text-xs text-white/50 font-geist">Vision Model</p>
                       </div>
                     </div>
                   </div>
@@ -649,8 +649,8 @@ export default function App() {
                     <div className="mx-auto flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: 'rgba(200,245,66,0.15)' }}>
                       <iconify-icon icon="solar:check-circle-linear" width="18" style={{ strokeWidth: 1.5, color: '#c8f542' }}></iconify-icon>
                     </div>
-                    <p className="mt-2.5 text-xs font-medium text-white font-geist">Connected</p>
-                    <p className="text-xs text-white/50 font-geist">Groq Engine</p>
+                    <p className="mt-2.5 text-xs font-medium text-white font-geist">AI Assistant</p>
+                    <p className="text-xs text-white/50 font-geist">Connected</p>
                   </div>
 
                   {/* Card 4: Spectrum Height Bars */}
@@ -660,12 +660,12 @@ export default function App() {
                         <iconify-icon icon="solar:bolt-linear" width="14" style={{ strokeWidth: 1.5, color: '#ffffff' }}></iconify-icon>
                       </span>
                       <div>
-                        <p className="text-xs font-medium text-white font-geist">Spectrum</p>
-                        <p className="text-xs text-white/50 font-geist">Recovery Rate</p>
+                        <p className="text-xs font-medium text-white font-geist">Diagnostic Overview</p>
+                        <p className="text-xs text-white/50 font-geist">Skin Health</p>
                       </div>
                     </div>
                     <div ref={ethBarsRef} className="mt-3 flex items-end gap-1 h-12" aria-hidden="true"></div>
-                    <p className="mt-3 text-xs font-medium text-white font-geist">1,842.10 SCORE</p>
+                    <p className="mt-3 text-xs font-medium text-white font-geist">Stable</p>
                   </div>
 
                   {/* Card 5: Star Rating */}
@@ -678,24 +678,54 @@ export default function App() {
                         <iconify-icon icon="solar:star-bold" width="12" style={{ color: '#c8f542' }}></iconify-icon>
                         <iconify-icon icon="solar:star-bold" width="12" style={{ color: '#c8f542' }}></iconify-icon>
                       </div>
-                      <span className="text-xs font-medium text-white font-geist">4.9</span>
+                      <span className="text-xs font-medium text-white font-geist">Trusted Experience</span>
                     </div>
-                    <p className="mt-1 text-xs text-white/50 font-geist">&gt; 24,000 reviews</p>
+                    <p className="mt-1 text-xs text-white/50 font-geist">Designed For You</p>
                   </div>
 
                   {/* Card 6: Health Pass Card */}
-                  <div data-float="6" className="rounded-2xl p-4 lg:absolute lg:bottom-8 lg:left-56 lg:w-52 liquid-glass-card transition-transform duration-300 hover:!scale-[1.03]">
-                    <span className="inline-flex items-center justify-center rounded-lg" style={{ width: 32, height: 24, background: 'rgba(255,255,255,0.15)' }}>
-                      <iconify-icon icon="solar:card-linear" width="15" style={{ strokeWidth: 1.5, color: '#ffffff' }}></iconify-icon>
-                    </span>
-                    <div className="mt-3 flex items-end justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-white font-geist">Derma Pass</p>
-                        <p className="text-xs text-white/50 font-geist">7231 ••••</p>
-                      </div>
-                      <p className="text-xs text-white/50 font-geist">09/28</p>
-                    </div>
-                  </div>
+                  {/* Card 6: Subscription Card */}
+<div data-float="6" className="rounded-2xl p-4 lg:absolute lg:bottom-8 lg:left-56 lg:w-52 liquid-glass-card transition-transform duration-300 hover:!scale-[1.03]">
+
+  <span className="inline-flex items-center justify-center rounded-lg"
+    style={{ width: 32, height: 24, background: 'rgba(255,255,255,0.15)' }}>
+    <iconify-icon
+      icon="solar:card-linear"
+      width="15"
+      style={{ strokeWidth: 1.5, color: '#ffffff' }}
+    ></iconify-icon>
+  </span>
+
+  <div className="mt-3 flex items-end justify-between gap-2">
+
+    <div className="min-w-0">
+      <p className="text-xs font-medium text-white font-geist">
+        Subscription
+      </p>
+
+      <p className="text-xs text-white/60 font-geist truncate">
+        {subscription?.planName || 'Free Plan'}
+      </p>
+    </div>
+
+    <div className="text-right shrink-0">
+      <p className="text-[10px] text-white/40 font-geist">
+        Expires
+      </p>
+
+      <p className="text-xs text-white/70 font-geist">
+        {subscription?.expiresAt
+          ? new Date(subscription.expiresAt).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric'
+            })
+          : '—'}
+      </p>
+    </div>
+
+  </div>
+</div>
 
                 </div>
               </section>
@@ -906,7 +936,7 @@ export default function App() {
                       </span>
                     </div>
                     <p className="mt-4 text-sm text-white/50 leading-relaxed max-w-xs font-geist">
-                      Your trusted AI dermatological analysis companion. Clarity over hype, since 2026, V2.9.2026
+                      Your trusted AI dermatological analysis companion. Clarity over hype, since 2026, V3.11.2026
                     </p>
                     <div className="mt-6 flex items-center gap-2">
                       <a href="#" aria-label="Follow on X" className="flex items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 hover:scale-110" style={{ width: 34, height: 34, border: '1px solid rgba(255,255,255,0.18)' }}>
