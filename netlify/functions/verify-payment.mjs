@@ -1,64 +1,38 @@
 import crypto from 'node:crypto';
+import { json, httpError, handle, parseBody, requireUser, getRazorpayOrder, grantPlan } from '../lib/store.mjs';
 
-const json = (statusCode, body) => ({
-  statusCode,
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-});
-
-export const handler = async (event) => {
-  try {
-    if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
-
-    let payload;
-    try { payload = JSON.parse(event.body || '{}'); }
-    catch { return json(400, { error: 'Invalid JSON body' }); }
-
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payload;
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return json(400, { error: 'Missing required fields' });
-    }
-
-    const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
-    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
-    if (!keyId || !keySecret) {
-      console.error('verify-payment: missing Razorpay env vars');
-      return json(500, { error: 'Server misconfiguration: Missing API keys' });
-    }
-
-    // 1. Verify the signature
-    const expected = crypto
-      .createHmac('sha256', keySecret)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-
-    const a = Buffer.from(expected);
-    const b = Buffer.from(String(razorpay_signature));
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-      console.error('verify-payment: signature mismatch');
-      return json(400, { success: false, error: 'Signature mismatch' });
-    }
-
-    // 2. Look up the plan stored on the order (best effort; signature is already valid)
-    let planId;
-    try {
-      const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
-      const r = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(razorpay_order_id)}`, {
-        headers: { Authorization: `Basic ${auth}` },
-      });
-      if (r.ok) {
-        const order = await r.json();
-        planId = order && order.notes ? order.notes.planId : undefined;
-      } else {
-        console.error('verify-payment: order lookup failed', r.status, await r.text());
-      }
-    } catch (lookupErr) {
-      console.error('verify-payment: order lookup error', lookupErr);
-    }
-
-    return json(200, { success: true, message: 'Payment verified', planId });
-  } catch (error) {
-    console.error('verify-payment: unexpected error', error);
-    return json(500, { error: 'Internal server error', details: error && error.message });
+export const handler = handle(async (event) => {
+  if (event.httpMethod !== 'POST') throw httpError(405, 'Method not allowed');
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parseBody(event);
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    throw httpError(400, 'Missing required fields');
   }
-};
+
+  const user = await requireUser(event);
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+  if (!keySecret) throw httpError(500, 'Server misconfiguration: Missing API keys');
+
+  // 1. Signature
+  const expected = crypto.createHmac('sha256', keySecret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`).digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(String(razorpay_signature));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    console.error('verify-payment: signature mismatch');
+    throw httpError(400, 'Signature mismatch');
+  }
+
+  // 2. Plan + owner come from the order we created, never from the browser
+  const order = await getRazorpayOrder(razorpay_order_id);
+  const { uid, planId } = order.notes || {};
+  if (!uid || !planId) throw httpError(400, 'Order is missing plan details');
+  if (uid !== user.uid) throw httpError(403, 'This payment belongs to a different account');
+
+  // 3. Activate (idempotent; the webhook may also do this)
+  const subscription = await grantPlan(user.uid, planId, {
+    paymentId: razorpay_payment_id,
+    orderId: razorpay_order_id,
+    source: 'checkout',
+  });
+  return json(200, { success: true, subscription });
+});
