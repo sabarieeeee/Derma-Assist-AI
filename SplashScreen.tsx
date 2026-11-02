@@ -42,7 +42,7 @@ const css = `
   position:absolute;left:50%;margin-left:-48px;width:96px;height:1px;background:rgba(255,255,255,0.14);overflow:hidden;
   bottom:calc(env(safe-area-inset-bottom,0px) + 56px);
 }
-.ds-fill{width:100%;height:100%;background:#c8f542;transform-origin:left center;animation:ds-load 2s linear both}
+.ds-fill{width:100%;height:100%;background:#c8f542;transform-origin:left center;animation:ds-load 5s linear both}
 
 @keyframes ds-mark{from{opacity:0;clip-path:inset(0 100% 0 0);transform:scale(.94)}to{opacity:1;clip-path:inset(0 0 0 0);transform:scale(1)}}
 @keyframes ds-sheen{from{transform:translateX(0)}to{transform:translateX(46px)}}
@@ -90,7 +90,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ fadeOut }) => {
         </div>
 
         <h1 className="ds-word">Derma Assist AI</h1>
-        <p className="ds-tag">Your Trusted Skin Health Assistant</p>
+        <p className="ds-tag">Your Trusted AI Skin Health Assistant</p>
       </div>
 
       <div className="ds-track" aria-hidden="true">
