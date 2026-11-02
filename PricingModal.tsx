@@ -11,6 +11,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose, onSuccess }
   const [discountPercent, setDiscountPercent] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [appliedCode, setAppliedCode] = useState(''); // only set after the server validates it
   
   // NEW: State for our custom in-app success popup
   const [successMsg, setSuccessMsg] = useState('');
@@ -29,24 +30,40 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose, onSuccess }
     }, 3500);
   };
 
-  const applyCoupon = () => {
-    const code = coupon.trim().toUpperCase();
-    if (code === 'DERMAPREMIUM') {
-      setDiscountPercent(1.0);
-      setErrorMsg('');
-      showToast('Premium Access Granted! 100% Off Applied.');
-    } else if (code === 'DERMANEW') {
-      setDiscountPercent(0.15);
-      setErrorMsg('');
-      showToast('Welcome Offer Applied! 15% Off.');
-    } else if (code === 'FLAT90') {
-      setDiscountPercent(0.90);
-      setErrorMsg('');
-      showToast('Test Mode: 90% Off Applied!');
-    } else {
+  // Safely read a JSON response; avoids a vague crash if the server returns HTML/plain text
+  const readJson = async (res: Response) => {
+    try { return await res.json(); }
+    catch { return { error: `Server error (${res.status}). Check the Netlify function logs.` }; }
+  };
+
+  const applyCoupon = async () => {
+    const code = coupon.trim();
+    if (!code) {
       setDiscountPercent(0);
-      setSuccessMsg('');
+      setAppliedCode('');
       setErrorMsg('Invalid Coupon Code');
+      return;
+    }
+    try {
+      const res = await fetch('/.netlify/functions/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'quote', couponCode: code })
+      });
+      const data = await readJson(res);
+      if (res.ok && data.valid) {
+        setDiscountPercent(data.discountPercent);
+        setAppliedCode(data.code);
+        setErrorMsg('');
+        showToast(data.message);
+      } else {
+        setDiscountPercent(0);
+        setAppliedCode('');
+        setSuccessMsg('');
+        setErrorMsg(data.error || 'Invalid Coupon Code');
+      }
+    } catch {
+      setErrorMsg('Could not check the coupon. Please try again.');
     }
   };
 
@@ -64,42 +81,38 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose, onSuccess }
     setIsProcessing(true);
     setErrorMsg('');
     const currentPlan = plans[selectedPlan];
-    const finalAmount = Math.round(currentPlan.price * (1 - discountPercent));
-
-    // 100% Discount Bypass
-    if (finalAmount === 0) {
-      setTimeout(() => {
-        onSuccess(selectedPlan);
-        setIsProcessing(false);
-      }, 1000); 
-      return;
-    }
-
-    const res = await loadRazorpayScript();
-    
-    if (!res) {
-      setErrorMsg('Razorpay SDK failed to load. Please check your connection.');
-      setIsProcessing(false);
-      return;
-    }
 
     try {
-      // 1. Create Order on Backend
+      // 1. Server prices the plan + coupon and creates the order
       const orderResponse = await fetch('/.netlify/functions/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: finalAmount * 100 }) // Send paise
+        body: JSON.stringify({ planId: selectedPlan, couponCode: appliedCode })
       });
-      
-      const orderData = await orderResponse.json();
 
-      if (!orderResponse.ok || !orderData.order_id) {
-        throw new Error(orderData.error || 'Failed to create secure order');
+      const orderData = await readJson(orderResponse);
+
+      if (!orderResponse.ok) {
+        throw new Error(orderData.details || orderData.error || 'Failed to create secure order');
       }
+
+      // 100% coupon: nothing to pay
+      if (orderData.free) {
+        setTimeout(() => {
+          onSuccess(selectedPlan);
+          setIsProcessing(false);
+        }, 1000);
+        return;
+      }
+
+      if (!orderData.order_id) throw new Error('Failed to create secure order');
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) throw new Error('Razorpay SDK failed to load. Please check your connection.');
 
       // 2. Open Razorpay Checkout Modal
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID, 
+        key: orderData.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Derma Assist AI',
@@ -121,7 +134,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose, onSuccess }
             const verifyData = await verifyResponse.json();
 
             if (verifyResponse.ok && verifyData.success) {
-              onSuccess(selectedPlan);
+              onSuccess((verifyData.planId || selectedPlan) as 'day' | 'pro' | 'annual');
             } else {
               setErrorMsg('Payment verification failed. Please contact support.');
             }
