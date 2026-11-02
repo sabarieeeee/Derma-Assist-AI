@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeSkinImage } from './geminiService';
-import { TimelineEntry, SkinAnalysis } from './types';
+import { TimelineEntry, SkinAnalysis, Subscription } from './types';
+import { auth } from './firebase';
+import { signOut } from 'firebase/auth';
+import { fetchSubscription, consumePaidScan } from './subscriptionApi';
 import ProgressionCompare from './ProgressionCompare';
 import AnalysisView from './AnalysisView';
 import SplashScreen from './SplashScreen';
@@ -37,6 +40,7 @@ export default function App() {
   // Daily Scan Quota Logic (10 Free Daily + Paid Top-ups)
   const [dailyScanCount, setDailyScanCount] = useState<number>(0);
   const [paidScansRemaining, setPaidScansRemaining] = useState<number>(0);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const quotaLimit = 10; 
 
   const [showIntro, setShowIntro] = useState(true);
@@ -198,14 +202,37 @@ export default function App() {
         localStorage.setItem('derm_daily_quota', JSON.stringify({ date: today, count: 0 }));
     }
 
-    // Init Paid Quota Buffer
-    const storedPaid = localStorage.getItem('derm_paid_scans');
-    if (storedPaid) {
-      setPaidScansRemaining(Number(storedPaid));
-    } else {
-      localStorage.setItem('derm_paid_scans', '0');
-    }
+    // Paid scans now live on the server (see subscription effect below); drop the old local copy
+    localStorage.removeItem('derm_paid_scans');
   }, []);
+
+  // Subscription state (server is the source of truth)
+  const applySubscription = (sub: Subscription | null) => {
+    setSubscription(sub);
+    setPaidScansRemaining(sub && sub.status !== 'expired' ? sub.scansRemaining : 0);
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      applySubscription(null);
+      return;
+    }
+    let cancelled = false;
+    fetchSubscription()
+      .then((sub) => { if (!cancelled) applySubscription(sub); })
+      .catch((e) => console.error('Could not load subscription', e));
+    return () => { cancelled = true; };
+  }, [isLoggedIn, userEmail]);
+
+  // Flip the plan to "expired" in the UI the moment it runs out
+  useEffect(() => {
+    if (!subscription || subscription.status === 'expired') return;
+    const expire = () => applySubscription({ ...subscription, status: 'expired', scansRemaining: 0 });
+    const ms = subscription.expiresAt - Date.now();
+    if (ms <= 0) { expire(); return; }
+    const t = setTimeout(expire, Math.min(ms, 2147483647));
+    return () => clearTimeout(t);
+  }, [subscription]);
 
   useEffect(() => {
     if (isLoggedIn && userEmail) {
@@ -253,6 +280,7 @@ export default function App() {
       } catch (e) {}
     }
     localStorage.removeItem('derm_user');
+    signOut(auth).catch(() => {});
     setIsLoggedIn(false);
     setUserEmail('');
     setUserName('');
@@ -347,9 +375,12 @@ export default function App() {
         setDailyScanCount(newCount);
         localStorage.setItem('derm_daily_quota', JSON.stringify({ date: new Date().toDateString(), count: newCount }));
       } else {
-        const newPaid = paidScansRemaining - 1;
-        setPaidScansRemaining(newPaid);
-        localStorage.setItem('derm_paid_scans', newPaid.toString());
+        try {
+          applySubscription(await consumePaidScan());
+        } catch (e) {
+          console.error('Could not record paid scan', e);
+          setPaidScansRemaining(Math.max(0, paidScansRemaining - 1));
+        }
       }
 
       const newEntry: TimelineEntry = {
@@ -570,7 +601,7 @@ export default function App() {
                       <span className="text-white font-medium font-geist">{Math.max(0, quotaLimit - dailyScanCount)} / {quotaLimit}</span>
                     </div>
                     <div className="flex justify-between text-[10px] mb-3">
-                      <span className="text-[#c8f542]/70 font-geist">Paid Buffer</span>
+                      <span className="text-[#c8f542]/70 font-geist">{subscription && subscription.status !== 'expired' ? subscription.planName : 'Paid Buffer'}</span>
                       <span className="text-[#c8f542] font-bold font-geist">{paidScansRemaining} remaining</span>
                     </div>
                     <div className="mt-3 relative h-1.5 rounded-full overflow-visible" style={{ background: 'rgba(255,255,255,0.15)' }} role="slider">
@@ -1043,18 +1074,12 @@ export default function App() {
             <div className="max-w-4xl mx-auto py-8 px-6 relative z-10 animate-in fade-in">
               <PricingModal 
                 onClose={() => navigateTo('home')}
-                onSuccess={(planId) => {
-                  let addedScans = 0;
-                  if (planId === 'day') addedScans = 15;
-                  if (planId === 'pro') addedScans = 100;
-                  if (planId === 'annual') addedScans = 1300;
-
-                  const newTotal = paidScansRemaining + addedScans;
-                  setPaidScansRemaining(newTotal);
-                  localStorage.setItem('derm_paid_scans', newTotal.toString());
-                  
-                  navigateTo('home');
-                }}
+                userEmail={userEmail}
+                userName={userName}
+                isLoggedIn={isLoggedIn}
+                onRequireLogin={() => setShowLoginModal(true)}
+                subscription={subscription}
+                onSubscriptionChange={applySubscription}
               />
             </div>
           )}
