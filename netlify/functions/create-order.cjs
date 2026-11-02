@@ -1,30 +1,72 @@
 const Razorpay = require('razorpay');
 
+// ---- Single source of truth for prices & coupons (rupees). Never trust the browser. ----
+const PLANS = {
+  day:    { name: 'Day Pass',        price: 99 },
+  pro:    { name: 'Pro Monthly',     price: 2599 },
+  annual: { name: 'Clinical Annual', price: 19999 },
+};
+
+// Same coupons as before, now validated on the server.
+const COUPONS = {
+  DERMAPREMIUM: { discount: 1.0,  message: 'Premium Access Granted! 100% Off Applied.' },
+  DERMANEW:     { discount: 0.15, message: 'Welcome Offer Applied! 15% Off.' },
+  FLAT90:       { discount: 0.90, message: 'Test Mode: 90% Off Applied!' },
+};
+
+const json = (statusCode, body) => ({
+  statusCode,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
+// Returns { discount, message, code } or throws
+function resolveCoupon(couponCode) {
+  const code = (couponCode || '').trim().toUpperCase();
+  if (!code) return { discount: 0, message: '', code: '' };
+  const c = COUPONS[code];
+  if (!c) throw new Error('Invalid Coupon Code');
+  return { discount: c.discount, message: c.message, code };
+}
+
+// Same rounding as the UI: whole rupees
+const finalRupees = (price, discount) => Math.round(price * (1 - discount));
+
 exports.handler = async (event) => {
-  // 1. Guard against wrong methods
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
+
+  let body;
+  try { body = JSON.parse(event.body || '{}'); }
+  catch { return json(400, { error: 'Invalid JSON body sent from frontend' }); }
+
+  const { action, planId, couponCode } = body;
+
+  // ---- Coupon check (used by the "Apply" button) ----
+  if (action === 'quote') {
+    try {
+      const c = resolveCoupon(couponCode);
+      return json(200, { valid: true, discountPercent: c.discount, message: c.message, code: c.code });
+    } catch (e) {
+      return json(400, { valid: false, error: e.message });
+    }
   }
 
-  let amount;
-  
-  // 2. Safe Parsing: This prevents the 502 crash if the frontend sends a weird payload
-  try {
-    const body = JSON.parse(event.body);
-    amount = body.amount;
-  } catch (parseError) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body sent from frontend' }) };
-  }
+  // ---- Create order ----
+  const plan = PLANS[planId];
+  if (!plan) return json(400, { error: 'Unknown plan' });
 
-  // Razorpay expects amounts in PAISE (e.g., 99 INR = 9900 paise)
-  if (!amount || amount < 100) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid amount. Minimum 100 paise required.' }) };
-  }
+  let coupon;
+  try { coupon = resolveCoupon(couponCode); }
+  catch (e) { return json(400, { error: e.message }); }
 
-  // 3. Ensure API keys exist so the Razorpay SDK doesn't crash the function
+  const rupees = finalRupees(plan.price, coupon.discount);
+
+  // 100% off: nothing to charge, so no Razorpay order
+  if (rupees === 0) return json(200, { free: true, planId, amount: 0 });
+
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('CRITICAL: Missing Razorpay environment variables in Netlify.');
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server misconfiguration: Missing API keys' }) };
+    return json(500, { error: 'Server misconfiguration: Missing API keys' });
   }
 
   try {
@@ -33,31 +75,24 @@ exports.handler = async (event) => {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    // 4. Removed the fake transfers array. 
-    // You CANNOT pass dummy strings to Razorpay Route. Add this back only when you have real 'acc_xxx' IDs.
     const order = await razorpay.orders.create({
-      amount: amount, 
+      amount: rupees * 100, // paise
       currency: 'INR',
-      receipt: `receipt_${Date.now()}`
+      receipt: `rcpt_${Date.now()}`,
+      notes: { planId, coupon: coupon.code },
     });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        order_id: order.id,
-        amount: order.amount,
-        currency: order.currency,
-      })
-    };
+    return json(200, {
+      key_id: process.env.RAZORPAY_KEY_ID, // public key, safe to return
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+    });
   } catch (error) {
-    // 5. Actually log the precise Razorpay error back to the frontend so you aren't guessing
     console.error('Razorpay API Error Details:', error);
-    return { 
-      statusCode: 500, 
-      body: JSON.stringify({ 
-        error: 'Failed to create Razorpay order',
-        details: error.description || error.message || 'Unknown Razorpay Error'
-      }) 
-    };
+    return json(500, {
+      error: 'Failed to create Razorpay order',
+      details: error?.error?.description || error?.description || error?.message || 'Unknown Razorpay Error',
+    });
   }
 };
